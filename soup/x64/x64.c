@@ -25,7 +25,7 @@ enum {
     X64GPRegister_R13,
     X64GPRegister_R14,
     X64GPRegister_R15,
-}
+};
 
 typedef U8 X64Mod;
 enum {
@@ -33,7 +33,7 @@ enum {
     X64Mod_Disp8 = 0b01,
     X64Mod_Disp32 = 0x10,
     X64Mod_Reg = 0b11,
-}
+};
 
 SoupEmiter soup_emiter_init(Arena *arena) {
     Byte *code = arena_get_current(arena);

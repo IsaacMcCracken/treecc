@@ -20,7 +20,8 @@ typedef uint16_t U16;
 typedef uint32_t U32;
 typedef uint64_t U64;
 
-
+typedef int8_t  S8;
+typedef int16_t S16;
 typedef int32_t S32;
 typedef int64_t S64;
 
@@ -71,6 +72,11 @@ S32 string_cmp(String a, String b);
 #endif // CORE_MACROS
 
 #if defined (CORE_IMPLEMENTATION)
+
+char *string_to_cstring(Arena *arena, String s) {
+    char *cstring = arena_push_array(arena, char, s.len + 1);
+    mem_cpy()
+}
 
 S32 string_cmp(String a, String b) {
     U64 len = (a.len < b.len) ? a.len : b.len;
