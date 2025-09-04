@@ -1,7 +1,7 @@
 #ifndef TREE_TOKENIZER
 #define TREE_TOKENIZER
 
-#include "../include/core.h"
+#include <core.h>
 
 typedef U32 TreeTokenKind;
 enum {
@@ -30,6 +30,7 @@ struct TreeToken {
 
 
 U32 tree_hash_string(String str);
+String string_from_source(Byte *src, U32 start, U32 end);
 TreeToken *tree_tokenize(Arena *arena, U32 *tokencount, Byte *src, U32 srclen);
 void print_tokens(TreeToken *tokens, U32 count, Byte *src);
 #endif

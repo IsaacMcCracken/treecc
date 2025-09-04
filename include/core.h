@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CORE_H
+#define CORE_H
 
 #include <stdint.h>
 #include <sys/mman.h>
@@ -19,7 +20,10 @@ typedef uint16_t U16;
 typedef uint32_t U32;
 typedef uint64_t U64;
 
+
+typedef int32_t S32;
 typedef int64_t S64;
+
 
 typedef struct {
     U64 pos;
@@ -40,7 +44,14 @@ typedef struct {
 
 
 
+
+Arena *arena_init(U64 init);
+void arena_clear(Arena *arena);
 void *arena_push_(Arena *arena, U64 size, U64 align);
+void *arena_get_current(Arena *arena);
+
+S64 string_parse_int(String a);
+S32 string_cmp(String a, String b);
 
 #ifndef CORE_MACROS
 #define CORE_MACROS
@@ -52,6 +63,7 @@ void *arena_push_(Arena *arena, U64 size, U64 align);
 #define mem_cmp(a, b, n) memcmp(a, b, n)
 #define mem_cpy(d, s, n) memcpy(d, s, n)
 #define mem_cpy_array(D, S, T, N) memcpy(D, S, sizeof(T)*(N))
+#define mem_cpy_item(D, S, T) memcpy(D, S, sizeof(T))
 
 #define arena_push_no_zero(arena, T) (T *)arena_push_no_zero_(arena, sizeof(T), mem_alignof(T))
 #define arena_push(arena, T) (T *)arena_push_(arena, sizeof(T), mem_alignof(T))
@@ -60,7 +72,29 @@ void *arena_push_(Arena *arena, U64 size, U64 align);
 
 #if defined (CORE_IMPLEMENTATION)
 
+S32 string_cmp(String a, String b) {
+    U64 len = (a.len < b.len) ? a.len : b.len;
+    for (U64 i = 0; i < len; i++) {
+        if (a.str[i] > b.str[i]) return 1;
+        else if (a.str[i] < b.str[i]) return -1;
+    }
 
+    if (a.len > b.len) return 1;
+    else if (a.len < b.len) return -1;
+    return 0;
+}
+
+/*
+ * TODO bullet proof
+ */
+S64 string_parse_int(String a) {
+    S64 x = 0;
+    for (U32 i = 0; i < a.len; i++) {
+        x = x * 10 + (a.str[i] - '0');
+    }
+
+    return x;
+}
 
 U64 mem_align_backward(U64 x, U64 align) {
     return x & ~(align -1);
@@ -135,6 +169,7 @@ void *arena_push_no_zero_(Arena *arena, U64 size, U64 align) {
     }
 
     char *result = ((char*)arena) + start;
+    arena->pos = end;
     return result;
 }
 
@@ -148,4 +183,5 @@ void *arena_push_(Arena *arena, U64 size, U64 align) {
 
 
 
+#endif
 #endif

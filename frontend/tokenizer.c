@@ -39,13 +39,13 @@ B32 tree_is_identifier_begin_rune(U32 rune) {
 }
 
 B32 tree_is_number_begin_rune(U32 rune) {
-    if (rune >= '0' && rune <= 9) return 1;
+    if (rune >= '0' && rune <= '9') return 1;
     return 0;
 }
 
 
 B32 tree_is_number_rune(U32 rune) {
-    if (rune >= '0' && rune <= 9) return 1;
+    if (rune >= '0' && rune <= '9') return 1;
     return 0;
 }
 
@@ -70,8 +70,6 @@ void tree_append_token(Arena *arena, TreeTokenKind kind, U32 start, U32 end, U32
     tok->start = start;
     tok->end = end;
 
-    printf("offset = %d\n", (int)((char*)tok - (char*)arena));
-
 
     *count += 1;
 }
@@ -84,12 +82,10 @@ void tree_append_keyword_or_identifier(Arena *arena, Byte *src, U32 start, U32 e
     U32 hashv = hash%KEYWORD_MAP_SIZE;
 
     TreeTokenKind kind = keyword_map[hashv];
+    if (string_cmp(tok_str, keywords[kind]) != 0) kind = TreeTokenKind_Invalid;
     if (kind == TreeTokenKind_Invalid) kind = TreeTokenKind_Identifier;
 
     tree_append_token(arena, kind, start, end, tokencount);
-
-
-    *tokencount += 1;
 }
 
 
@@ -104,7 +100,6 @@ TreeToken *tree_tokenize(
     U32 curr = 0, prev = 0;
 
     TreeToken *tokens = arena_get_current(arena);
-    printf("offset = %d, size = %d\n", (int)((char*)tokens - (char*)arena), sizeof(Arena));
     while (curr < srclen) {
         prev = curr;
         Byte ch = src[curr];
@@ -116,13 +111,16 @@ TreeToken *tree_tokenize(
 
             tree_append_keyword_or_identifier(arena, src, prev, curr, &count);
         } else if (tree_is_number_begin_rune(ch)) {
+
             while (tree_is_number_rune(ch)) {
                 curr += 1;
                 ch = src[curr];
+                // putchar(ch);
             }
 
             tree_append_token(arena, TreeTokenKind_Int_Lit, prev, curr, &count);
         } else {
+            curr += 1;
             switch (ch) {
                 case '+':
                     tree_append_token(arena, TreeTokenKind_Plus, prev, curr, &count);
@@ -140,7 +138,6 @@ TreeToken *tree_tokenize(
                     tree_append_token(arena, TreeTokenKind_Semi_Colon, prev, curr, &count);
                     break;
             }
-            curr += 1;
         }
 
     }
