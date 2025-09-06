@@ -1,7 +1,4 @@
 
-#include <assert.h>
-#include <string.h>
-#define CORE_IMPLEMENTATION
 #include <core.h>
 
 typedef U16 SoupDataKind;
@@ -101,8 +98,7 @@ B32 soup_node_equal(SoupNode *a, SoupNode *b) {
 
 void soup_map_insert(SoupNodeMap *map, SoupNode *node) {
     U64 hash = soup_node_hash(node);
-    SoupNodeMapCell *cell = arena_push(map->arena, SoupNodeMapCell);
-    cell->node = node;
+    U64 hashv = hash % map->cap;
     SoupNodeMapCell **slot = &map->cells[hash % map->cap];
     while (*slot) {
         if (soup_node_equal((*slot)->node, node)) {
@@ -111,6 +107,7 @@ void soup_map_insert(SoupNodeMap *map, SoupNode *node) {
         slot = &(*slot)->next;
     }
 
+    SoupNodeMapCell *cell = arena_push(map->arena, SoupNodeMapCell);
     *slot = cell;
 }
 

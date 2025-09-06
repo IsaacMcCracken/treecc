@@ -1,6 +1,6 @@
 #include "types.h"
 
-TreeNumber numberinfo[TreeNumberKind_COUNT] = {
+TreeNumber numberinfo[10] = {
   [TreeNumberKind_U8]   = (TreeNumber){.kind = TreeTypeKind_Number, .size = 0, .flags = 0},
   [TreeNumberKind_U16]  = (TreeNumber){.kind = TreeTypeKind_Number, .size = 1, .flags = 0},
   [TreeNumberKind_U32]  = (TreeNumber){.kind = TreeTypeKind_Number, .size = 2, .flags = 0},

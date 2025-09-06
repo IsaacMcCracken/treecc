@@ -93,11 +93,11 @@ struct TreeTypeMap {
 };
 
 
+extern TreeNumber numberinfo[10];
 
 U64 tree_type_hash(TreeType *type);
 B32 tree_type_equal(TreeType *a, TreeType *b);
 void tree_type_map_insert(TreeTypeMap *map, TreeType *type);
 TreeType *tree_type_map_lookup(TreeTypeMap *map, TreeType *type);
-extern TreeNumber numberinfo[TreeNumberKind_COUNT];
 
 #endif // TREE_TYPE_H
