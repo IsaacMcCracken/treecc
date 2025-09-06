@@ -71,6 +71,7 @@ struct SoupFunction {
     Arena *arena;
     U64 deadspace;
     SoupNodeMap map;
+    SoupNode *start;
 };
 
 // Builder Functions
@@ -234,7 +235,6 @@ SoupNode *soup_peepint(SoupFunction *fn, SoupNode *node) {
     }
 
     if (node->inputs[0]->kind == SoupNodeKind_ConstInt && node->inputs[1]->kind != SoupNodeKind_ConstInt) {
-        printf("we debuggin so v = %ld\n", 2);
         return soup_create_binary_expr(fn, node->kind, node->inputs[1], node->inputs[0]);
     }
 
@@ -278,7 +278,6 @@ SoupNode *soup_create_binary_expr(
     soup_node_alloc_inputs(fn, &n, 2);
     soup_node_set_input(fn, &n, lhs, 0);
     soup_node_set_input(fn, &n, rhs, 1);
-
 
     return soup_peephole(fn, &n);
 }

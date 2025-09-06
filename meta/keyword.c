@@ -6,10 +6,12 @@
 
 char *keywords[] = {
     "return",
+    "int",
 };
 
 char *keyword_enums[] = {
   "TreeTokenKind_Return",
+  "TreeTokenKind_Int",
 };
 
 U64 keyword_count() {
@@ -47,16 +49,18 @@ int main() {
     fprintf(file, "#define KEYWORD_MAP_SIZE %d\n\n", mapsize);
 
 
-    fprintf(file, "char *keywords[] = {\n");
+    fprintf(file, "String keywords[] = {\n");
     for (int i = 0; i < keyword_count(); i++) {
-        fprintf(file, "    \"%s\",\n", keywords[i]);
+        int len = strlen(keywords[i]);
+        fprintf(file, "    [%s] = (String){\"%s\", %d},\n", keyword_enums[i], keywords[i], len);
     }
     fprintf(file, "};\n");
 
     fprintf(file, "TreeTokenKind keyword_map[%d] = {\n",mapsize);
     for (int i = 0; i < keyword_count(); i++) {
-        U32 hash = tree_hash_string(StrLit(keywords[i]));
-        fprintf(file, "    [0x%08x] = %s,\n", hash%mapsize, keyword_enums[i]);
+        U32 hash = tree_hash_string((String){keywords[i], strlen(keywords[i])});
+        printf("hashv = %d\n", hash%mapsize);
+        fprintf(file, "    [%d] = %s,\n", hash%mapsize, keyword_enums[i]);
     }
     fprintf(file, "};\n");
 

@@ -3,8 +3,7 @@
 // #include "soup/soup.h"
 #include "frontend/parser.h"
 
-char *src = "return 1 + 2 * 3;";
-
+char *src = "return 1 + 2;";
 
 TreeParser tree_parse(char *src) {
     Arena *arena = arena_init(1<<20);
@@ -24,7 +23,7 @@ TreeParser tree_parse(char *src) {
 
 
     SoupNode *ret = tree_parse_stmt(&p);
-    printf("Constfold ret %ld\n", ret->inputs[1]->vint);
+    printf("Constfold ret %ld %hd\n", ret->inputs[1]->vint, ret->inputs[1]->kind);
     return p;
 }
 

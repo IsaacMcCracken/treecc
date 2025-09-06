@@ -1,8 +1,9 @@
 #ifndef TREE_PARSER
 #define TREE_PARSER
 
-#include "tokenizer.h"
 #include <soup.h>
+#include "tokenizer.h"
+#include "types.h"
 
 typedef struct TreeParser TreeParser;
 struct TreeParser {

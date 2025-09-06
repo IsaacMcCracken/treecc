@@ -10,6 +10,10 @@ void tree_debug_print_token(TreeParser *p, TreeToken tok) {
     printf("'%.*s' = %d\n", (int)str.len, str.str, tok.kind);
 }
 
+// void tree_error(TreeParser *p, U32 tokenindex, String msg) {
+//     fprintf("Error: %.*s\n", (int)msg.len, msg.str);
+// }
+
 
 TreeToken tree_peek_next(TreeParser *p) {
     if (p->curr + 1 < p->tokencount) {
@@ -17,6 +21,14 @@ TreeToken tree_peek_next(TreeParser *p) {
     }
     return (TreeToken){.kind = TreeTokenKind_EOF};
 }
+
+TreeToken tree_peek_n(TreeParser *p, U32 n) {
+    if (p->curr + n < p->tokencount) {
+        return p->tokens[p->curr + n];
+    }
+    return (TreeToken){.kind = TreeTokenKind_EOF};
+}
+
 
 void tree_advance_token(TreeParser *p) {
     p->curr += 1;
@@ -38,7 +50,6 @@ S32 tree_operatator_precedence(TreeToken tok) {
 SoupNode *tree_parse_urinary(TreeParser *p) {
     TreeToken tok = tree_current_token(p);
 
-    printf("Urinary: "); tree_debug_print_token(p, tok);
 
     tree_advance_token(p);
 
@@ -51,6 +62,7 @@ SoupNode *tree_parse_urinary(TreeParser *p) {
         }
         default: {
             String tok_str = string_from_source(p->src, tok.start, tok.end);
+            //todo make error
             fprintf(stderr, "Error: Did not expect token '%.*s'\n", (int)tok_str.len, tok_str.str);
         } break;
     }
@@ -96,6 +108,8 @@ SoupNode *tree_parse_expr(TreeParser *p) {
     SoupNode *lhs = tree_parse_urinary(p);
     return tree_parse_binary_expr(p, lhs, 0);
 }
+
+
 
 
 SoupNode *tree_parse_stmt(TreeParser *p) {

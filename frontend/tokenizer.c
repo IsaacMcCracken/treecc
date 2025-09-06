@@ -137,6 +137,9 @@ TreeToken *tree_tokenize(
                 case ';':
                     tree_append_token(arena, TreeTokenKind_Semi_Colon, prev, curr, &count);
                     break;
+                case '=':
+                    tree_append_token(arena, TreeTokenKind_Equals, prev, curr, &count);
+                    break;
             }
         }
 

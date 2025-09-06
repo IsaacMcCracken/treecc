@@ -7,6 +7,9 @@ typedef U32 TreeTokenKind;
 enum {
   TreeTokenKind_Invalid,
 
+  TreeTokenKind_Int,
+
+  TreeTokenKind_Equals,
   TreeTokenKind_Semi_Colon,
 
   TreeTokenKind_Plus,

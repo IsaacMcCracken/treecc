@@ -75,7 +75,8 @@ S32 string_cmp(String a, String b);
 
 char *string_to_cstring(Arena *arena, String s) {
     char *cstring = arena_push_array(arena, char, s.len + 1);
-    mem_cpy()
+    mem_cpy(cstring, s.str, s.len); // arena automatically pushes 0s so null terminated
+    return cstring;
 }
 
 S32 string_cmp(String a, String b) {
@@ -184,10 +185,6 @@ void *arena_push_(Arena *arena, U64 size, U64 align) {
     mem_zero(result, size);
     return result;
 }
-
-
-
-
 
 #endif
 #endif
