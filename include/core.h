@@ -52,6 +52,8 @@ Arena *arena_init(U64 init);
 void arena_clear(Arena *arena);
 void *arena_push_(Arena *arena, U64 size, U64 align);
 void *arena_get_current(Arena *arena);
+TempArena temp_arena_begin(Arena *arena);
+void temp_arena_end(TempArena temp);
 
 S64 string_parse_int(String a);
 char *string_to_cstring(Arena *arena, String s);

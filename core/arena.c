@@ -52,3 +52,15 @@ void *arena_push_(Arena *arena, U64 size, U64 align) {
     mem_zero(result, size);
     return result;
 }
+
+
+TempArena temp_arena_begin(Arena *arena) {
+    return (TempArena){
+        .pos = arena->pos,
+        arena = arena,
+    };
+}
+
+void temp_arena_end(TempArena temp) {
+    temp.arena->pos = temp.pos;
+}
