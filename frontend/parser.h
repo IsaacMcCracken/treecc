@@ -5,12 +5,41 @@
 #include "tokenizer.h"
 #include "types.h"
 
+typedef U16 TreeDeclKind;
+enum {
+    TreeDeclKind_Invalid,
+    TreeDeclKind_Struct,
+    TreeDeclKind_FnProto;
+    TreeDeclKind_Fn,
+    TreeDeclKind_Global,
+};
+
+typedef struct TreeDecl TreeDecl;
+struct TreeDecl {
+    TreeDeclKind kind;
+    U32 tokindex;
+    TreeDecl *prev, *next;
+};
+
+typedef struct TreeFnDecl TreeFnDecl;
+struct TreeFnDecl {
+    TreeDeclKind kind;
+    U32 tokindex;
+    TreeDecl *prev, *next;
+    // Internal
+
+    TreeFunction proto;
+};
+
 typedef struct TreeParser TreeParser;
 struct TreeParser {
     Arena *arena;
     Byte *src;
     TreeToken *tokens;
+    TreeTypeMap
     U32 tokencount;
+    U32 linenum;
+    U32 linetok;
     U32 curr;
     SoupFunction fn;
     SoupNode *ret;
