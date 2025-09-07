@@ -31,7 +31,7 @@ struct TreeToken {
 };
 
 
-
+B32 tree_tokenizer_init(void);
 U32 tree_hash_string(String str);
 String string_from_source(Byte *src, U32 start, U32 end);
 TreeToken *tree_tokenize(Arena *arena, U32 *tokencount, Byte *src, U32 srclen);

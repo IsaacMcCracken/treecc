@@ -1,6 +1,10 @@
 #include "tokenizer.h"
 #include "gen/keywords.c"
 
+B32 tree_tokenizer_init(void) {
+    tree_init_token_maps();
+    return 1;
+}
 
 U32 tree_hash_dbj2(Byte *data, U64 len) {
     U32 hash = 5382;

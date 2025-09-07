@@ -38,8 +38,8 @@ U32 tree_hash_string(String str) {
 }
 
 
-int main() {
-    int mapsize = 37;
+void gen_keywords(void) {
+    int mapsize = 53;
 
     FILE *file = fopen("frontend/gen/keywords.c", "w");
 
@@ -49,20 +49,20 @@ int main() {
     fprintf(file, "#define KEYWORD_MAP_SIZE %d\n\n", mapsize);
 
 
-    fprintf(file, "String keywords[] = {\n");
+    fprintf(file, "String keywords[64];\n");
+    fprintf(file, "TreeTokenKind keyword_map[%d];\n\n\n", mapsize);
+
+    fprintf(file, "void tree_init_token_maps(void) {\n");
     for (int i = 0; i < keyword_count(); i++) {
         int len = strlen(keywords[i]);
-        fprintf(file, "    [%s] = (String){\"%s\", %d},\n", keyword_enums[i], keywords[i], len);
+        fprintf(file, "    keywords[%s] = (String){\"%s\", %d};\n", keyword_enums[i], keywords[i], len);
     }
-    fprintf(file, "};\n");
-
-    fprintf(file, "TreeTokenKind keyword_map[%d] = {\n",mapsize);
+    
     for (int i = 0; i < keyword_count(); i++) {
         U32 hash = tree_hash_string((String){keywords[i], strlen(keywords[i])});
-        printf("hashv = %d\n", hash%mapsize);
-        fprintf(file, "    [%d] = %s,\n", hash%mapsize, keyword_enums[i]);
-    }
-    fprintf(file, "};\n");
+        fprintf(file, "    keyword_map[%d] = %s;\n", hash%mapsize, keyword_enums[i]);
+    }   
+    fprintf(file, "}\n\n");
 
     fclose(file);
 }

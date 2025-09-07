@@ -28,5 +28,6 @@ TreeParser tree_parse(char *src) {
 }
 
 int main(int argc, char **argv) {
+    tree_tokenizer_init();
     tree_parse(src);
 }
