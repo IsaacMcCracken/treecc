@@ -48,6 +48,20 @@ struct SoupNode {
     U16 inputcap, usercap;
 };
 
+typedef struct SoupSymbolNodeCell SoupSymbolNodeCell;
+struct SoupSymbolNodeCell {
+    SoupSymbolNodeCell *next;
+    String name;
+    SoupNode *node;
+};
+
+typedef struct SoupSymbolTableNode SoupSymbolTableNode;
+struct SoupSymbolTableNode {
+    SoupNode node;
+    SoupSymbolNodeCell **cells;
+    U64 cap;
+};
+
 typedef struct SoupNodeMapCell SoupNodeMapCell;
 struct SoupNodeMapCell {
     SoupNode *node;
@@ -85,6 +99,10 @@ U32 soup_hash_dbj2(Byte *data, U64 len) {
     return hash;
 }
 
+U32 soup_hash_string(String s) {
+    return soup_hash_dbj2((Byte*)s.str, s.len);
+}
+
 U64 soup_node_hash(SoupNode *node) {
     U32 input_hash = soup_hash_dbj2((Byte*)node->inputs, sizeof(SoupNode*)*node->inputlen);
     return ((((U64)node->kind)<<48) | ((U64)input_hash)) + (U64)node->vint;
@@ -95,6 +113,23 @@ B32 soup_node_equal(SoupNode *a, SoupNode *b) {
     return a->kind == b->kind &&
     memcmp((Byte*)a->inputs, (Byte*)b->inputs, sizeof(SoupNode*) * a->inputlen) == 0;
 }
+
+// void soup_symbol_table_insert(SoupSymbolTableNode *table, String s, SoupNode *node) {
+//     U32 hash = soup_hash_string(s);
+//     U32 hashv = hash % table->cap;
+//     SoupSymbolNodeCell **slot = &table->cells[hashv];
+//     while (*slot) {
+//         if (string_cmp(s, (*slot)->name) == 0) {
+//             (*slot)->node =node;
+//             return;
+//         }
+
+//         slot = &((*slot)->next);
+//     }
+
+//     SoupSymbolNodeCell *cell = 
+//     *slot = 
+// }
 
 void soup_map_insert(SoupNodeMap *map, SoupNode *node) {
     U64 hash = soup_node_hash(node);
