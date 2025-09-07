@@ -1,7 +1,13 @@
 compiler
 compiler.exe
+compiler.ilk
+compiler.pdb
+compiler.proj
+compiler.rdi
+vc140.pdb
+vc140.rdi
 build.obj
-.zed/
-genkeywords
 meta.exe
+genkeywords
 meta.obj
+.zed/

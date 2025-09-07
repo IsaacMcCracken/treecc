@@ -246,7 +246,7 @@ SoupNode *soup_peephole(SoupFunction *fn, SoupNode *node) {
         case SoupNodeKind_SubI:
         case SoupNodeKind_MulI:
         case SoupNodeKind_DivI: {
-            soup_peepint(fn, node);
+            node = soup_peepint(fn, node);
         } break;
     }
 
