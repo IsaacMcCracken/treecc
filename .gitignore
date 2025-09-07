@@ -1,4 +1,6 @@
 compiler
+compiler.exe
+build.obj
 .zed/
 genkeywords
 meta.exe

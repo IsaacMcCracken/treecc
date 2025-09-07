@@ -1,16 +1,16 @@
 #include "types.h"
 
 TreeNumber numberinfo[10] = {
-  [TreeNumberKind_U8]   = (TreeNumber){.kind = TreeTypeKind_Number, .size = 0, .flags = 0},
-  [TreeNumberKind_U16]  = (TreeNumber){.kind = TreeTypeKind_Number, .size = 1, .flags = 0},
-  [TreeNumberKind_U32]  = (TreeNumber){.kind = TreeTypeKind_Number, .size = 2, .flags = 0},
-  [TreeNumberKind_U64]  = (TreeNumber){.kind = TreeTypeKind_Number, .size = 3, .flags = 0},
-  [TreeNumberKind_S8]   = (TreeNumber){.kind = TreeTypeKind_Number, .size = 0, .flags = TreeNumberFlag_IsSigned},
-  [TreeNumberKind_S16]  = (TreeNumber){.kind = TreeTypeKind_Number, .size = 1, .flags = TreeNumberFlag_IsSigned},
-  [TreeNumberKind_S32]  = (TreeNumber){.kind = TreeTypeKind_Number, .size = 2, .flags = TreeNumberFlag_IsSigned},
-  [TreeNumberKind_S64]  = (TreeNumber){.kind = TreeTypeKind_Number, .size = 3, .flags = TreeNumberFlag_IsSigned},
-  [TreeNumberKind_F32]  = (TreeNumber){.kind = TreeTypeKind_Number, .size = 2, . flags = TreeNumberFlag_IsFloat},
-  [TreeNumberKind_F64]  = (TreeNumber){.kind = TreeTypeKind_Number, .size = 2, . flags = TreeNumberFlag_IsFloat},
+  {TreeTypeKind_Number, 0, 0},
+  {TreeTypeKind_Number, 1, 0},
+  {TreeTypeKind_Number, 2, 0},
+  {TreeTypeKind_Number, 3, 0},
+  {TreeTypeKind_Number, 0, TreeNumberFlag_IsSigned},
+  {TreeTypeKind_Number, 1, TreeNumberFlag_IsSigned},
+  {TreeTypeKind_Number, 2, TreeNumberFlag_IsSigned},
+  {TreeTypeKind_Number, 3, TreeNumberFlag_IsSigned},
+  {TreeTypeKind_Number, 2, TreeNumberFlag_IsFloat},
+  {TreeTypeKind_Number, 2, TreeNumberFlag_IsFloat},
 };
 
 

@@ -9,7 +9,7 @@ typedef U16 TreeDeclKind;
 enum {
     TreeDeclKind_Invalid,
     TreeDeclKind_Struct,
-    TreeDeclKind_FnProto;
+    TreeDeclKind_FnProto,
     TreeDeclKind_Fn,
     TreeDeclKind_Global,
 };
@@ -36,7 +36,7 @@ struct TreeParser {
     Arena *arena;
     Byte *src;
     TreeToken *tokens;
-    TreeTypeMap
+    TreeTypeMap types;
     U32 tokencount;
     U32 linenum;
     U32 linetok;

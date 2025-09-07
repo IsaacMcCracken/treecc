@@ -20,9 +20,9 @@ struct TreeType {
 
 typedef U8 TreeNumberKind;
 enum {
-    TreeNumberKind_U8 = 0,
-    TreeNumberKind_U16 = 1,
-    TreeNumberKind_U32 = 2,
+    TreeNumberKind_U8,
+    TreeNumberKind_U16,
+    TreeNumberKind_U32,
     TreeNumberKind_U64,
     TreeNumberKind_S8,
     TreeNumberKind_S16,
