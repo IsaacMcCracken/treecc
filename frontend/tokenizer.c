@@ -126,7 +126,13 @@ TreeToken *tree_tokenize(
         } else {
             curr += 1;
             switch (ch) {
-                case '+':
+                case '(':
+                    tree_append_token(arena, TreeTokenKind_LParen, prev, curr, &count);
+                    break;
+                case ')':
+                    tree_append_token(arena, TreeTokenKind_RParen, prev, curr, &count);
+                    break;
+                    case '+':
                     tree_append_token(arena, TreeTokenKind_Plus, prev, curr, &count);
                     break;
                 case '-':
@@ -139,7 +145,10 @@ TreeToken *tree_tokenize(
                     tree_append_token(arena, TreeTokenKind_Slash, prev, curr, &count);
                     break;
                 case ';':
-                    tree_append_token(arena, TreeTokenKind_Semi_Colon, prev, curr, &count);
+                    tree_append_token(arena, TreeTokenKind_SemiColon, prev, curr, &count);
+                    break;
+                case ',':
+                    tree_append_token(arena, TreeTokenKind_Comma, prev, curr, &count);
                     break;
                 case '=':
                     tree_append_token(arena, TreeTokenKind_Equals, prev, curr, &count);

@@ -10,7 +10,11 @@ enum {
   TreeTokenKind_Int,
 
   TreeTokenKind_Equals,
-  TreeTokenKind_Semi_Colon,
+  TreeTokenKind_SemiColon,
+  TreeTokenKind_Comma,
+
+  TreeTokenKind_LParen,
+  TreeTokenKind_RParen,
 
   TreeTokenKind_Plus,
   TreeTokenKind_Minus,

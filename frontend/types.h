@@ -75,14 +75,14 @@ struct TreeStruct {
 typedef struct TreeFunction TreeFunction;
 struct TreeFunction {
     TreeTypeKind kind;
-    TreeFieldList *params;
+    TreeFieldList params;
     TreeType *returntype;
 };
 
 typedef struct TreeTypeMapCell TreeTypeMapCell;
 struct TreeTypeMapCell {
-    TreeType *type;
     TreeTypeMapCell *next;
+    TreeType *type;
 };
 
 typedef struct TreeTypeMap TreeTypeMap;
@@ -99,5 +99,7 @@ U64 tree_type_hash(TreeType *type);
 B32 tree_type_equal(TreeType *a, TreeType *b);
 void tree_type_map_insert(TreeTypeMap *map, TreeType *type);
 TreeType *tree_type_map_lookup(TreeTypeMap *map, TreeType *type);
+
+void tree_push_field(TreeFieldList *l, TreeField *f);
 
 #endif // TREE_TYPE_H

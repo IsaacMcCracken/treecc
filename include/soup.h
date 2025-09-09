@@ -127,8 +127,8 @@ B32 soup_node_equal(SoupNode *a, SoupNode *b) {
 //         slot = &((*slot)->next);
 //     }
 
-//     SoupSymbolNodeCell *cell = 
-//     *slot = 
+//     SoupSymbolNodeCell *cell =
+//     *slot =
 // }
 
 void soup_map_insert(SoupNodeMap *map, SoupNode *node) {
@@ -146,8 +146,7 @@ void soup_map_insert(SoupNodeMap *map, SoupNode *node) {
     *slot = cell;
 }
 
-SoupNodeMap soup_map_init(U64 arena_cap, U64 map_cap) {
-    Arena *arena = arena_init(arena_cap);
+SoupNodeMap soup_map_init(Arena *arena, U64 map_cap) {
     SoupNodeMapCell **cells = arena_push_array(arena, SoupNodeMapCell*, map_cap);
     SoupNodeMap map = (SoupNodeMap){
         .arena = arena,
