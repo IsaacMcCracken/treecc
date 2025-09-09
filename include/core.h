@@ -52,6 +52,7 @@ Arena *arena_init(U64 init);
 void arena_clear(Arena *arena);
 void *arena_push_(Arena *arena, U64 size, U64 align);
 void *arena_get_current(Arena *arena);
+void arena_deinit(Arena *arena);
 TempArena temp_arena_begin(Arena *arena);
 void temp_arena_end(TempArena temp);
 
@@ -60,7 +61,7 @@ char *string_to_cstring(Arena *arena, String s);
 S32 string_cmp(String a, String b);
 String string_alloc(Arena *arena, const char *str);
 String string_cpy(Arena *arena, String source);
-String string_concat(Arena *arena, String A, String B, int count, ...);
+String string_concat(Arena *arena, int count, ...);
 
 #define StrLit(str) (String){ str, sizeof(str) - 1 }
 

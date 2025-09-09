@@ -13,9 +13,8 @@ String string_cpy(Arena *arena, String source) {
     mem_cpy(string.str, source.str, string.len);
     return string;
 }
-
-String string_concat(Arena *arena, String A, String B, int count, ...) {
-    U64 len = A.len + B.len;
+String string_concat(Arena *arena, int count, ...) {
+    U64 len = 0;
     va_list args;
     va_start(args, count);
     for (int i = 0; i < count; i++) {
@@ -29,10 +28,6 @@ String string_concat(Arena *arena, String A, String B, int count, ...) {
 
     U64 offset = 0;
     va_start(args, count);
-    mem_cpy(&(string.str[offset]), A.str, A.len);
-    offset += A.len;
-    mem_cpy(&(string.str[offset]), B.str, B.len);
-    offset += B.len;
 
     for (int i = 0; i < count; i++) {
         String arg = va_arg(args, String);
