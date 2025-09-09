@@ -22,6 +22,10 @@ TreeToken tree_peek_next(TreeParser *p) {
     return (TreeToken){.kind = TreeTokenKind_EOF};
 }
 
+String tree_string_from_token(TreeParser *p, TreeToken tok) {
+  return string_from_source(p->src, tok.start, tok.end);
+};
+
 TreeToken tree_peek_n(TreeParser *p, U32 n) {
     if (p->curr + n < p->tokencount) {
         return p->tokens[p->curr + n];
@@ -127,4 +131,106 @@ SoupNode *tree_parse_stmt(TreeParser *p) {
     }
 
     return NULL;
+}
+
+TreeType *tree_parse_type_number(TreeParser *p) {
+    TreeToken tok = tree_current_token(p);
+    switch (tok.kind) {
+        case TreeTokenKind_Int:
+            return (TreeType*)&numberinfo[TreeNumberKind_S32];
+    }
+
+    assert(0);
+}
+
+TreeType *tree_parse_type(TreeParser *p) {
+    TreeType *t = 0;
+    TreeToken tok = tree_current_token(p);
+    switch (tok.kind) {
+        case TreeTokenKind_Int:{
+            t = tree_parse_type_number(p);
+        } break;
+
+        default: {
+            // error
+        } break;
+    }
+    tree_advance_token(p);
+    return t;
+}
+
+TreeFunction tree_parse_function_proto(TreeParser *p, TreeType *returntype) {
+    // enters on a TreeTokenKind_LParen
+    tree_advance_token(p);
+    TreeToken tok = tree_current_token(p);
+
+    TreeFieldList l = {0};
+
+    while (tok.kind != TreeTokenKind_RParen) {
+        // Should enter on a type token,
+        TreeType *t = tree_parse_type(p);
+        tok = tree_current_token(p);
+        if (tok.kind != TreeTokenKind_Identifier) {
+            // error
+        }
+
+        String name = tree_string_from_token(p, tok);
+
+        TreeField *field = arena_push(p->arena, TreeField);
+        field->type = t;
+        field->name = name;
+
+        tree_push_field(&l, field);
+
+        tree_advance_token(p);
+        tok = tree_current_token(p);
+
+        if (tok.kind == TreeTokenKind_Comma){
+            tree_advance_token(p);
+            tok = tree_current_token(p);
+            continue;
+        } else if (tok.kind != TreeTokenKind_RParen) {
+            // error
+        }
+    }
+
+    TreeFunction signature = (TreeFunction){
+        .kind = TreeTypeKind_Function,
+        .params = l,
+        .returntype = returntype,
+    };
+
+    return signature; // todo register function signature in typesystem
+}
+
+TreeDecl *tree_parse_decl(TreeParser *p) {
+    TreeType *t = tree_parse_type(p);
+    TreeToken tok = tree_current_token(p);
+    if (tok.kind != TreeTokenKind_Identifier) {
+        // error
+    }
+
+    String name = tree_string_from_token(p, tok);
+
+    tree_advance_token(p);
+    tok = tree_current_token(p);
+    switch (tok.kind) {
+        // function definition or proto
+        case TreeTokenKind_LParen: {
+            TreeFunction proto = tree_parse_function_proto(p, t);
+        } break;
+        // initalized global
+        case TreeTokenKind_Equals: {
+        } break;
+
+        // undefined global
+        case TreeTokenKind_SemiColon: {
+        } break;
+
+        // error
+        default: {
+        } break;
+    }
+
+    return 0;
 }

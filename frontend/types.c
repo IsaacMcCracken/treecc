@@ -13,7 +13,20 @@ TreeNumber numberinfo[10] = {
   {TreeTypeKind_Number, 2, TreeNumberFlag_IsFloat},
 };
 
+void tree_push_field(TreeFieldList *l, TreeField *f) {
+    assert(f);
+    assert(l);
+    if (l->tail) {
+        assert(l->head);
 
+        l->tail->next = f;
+        f->prev = l->tail;
+        l->tail = f;
+    } else {
+        l->head = f;
+        l->tail = f;
+    }
+}
 
 U64 tree_type_hash_dbj2(Byte *bytes, U64 len) {
     U64 hash = 5382;
