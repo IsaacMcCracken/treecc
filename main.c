@@ -5,7 +5,7 @@
 //temp
 #include "soup/x64/x64.c"
 
-char *src = "return 1 + 2;";
+char *src = "int fn() {return 1 + 2;}";
 
 TreeParser tree_parse(char *src) {
     Arena *arena = arena_init(2<<20);
@@ -34,8 +34,7 @@ TreeParser tree_parse(char *src) {
     };
 
 
-    SoupNode *ret = tree_parse_stmt(&p);
-    printf("Constfold ret %ld %hd\n", ret->inputs[1]->vint, ret->inputs[1]->kind);
+    TreeDecl *func = tree_parse_decl(&p);
     return p;
 }
 
