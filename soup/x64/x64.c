@@ -101,10 +101,14 @@ void x64_encode_syscall(X64Emiter *e) {
 }
 
 void x64_encode_near_jmp(X64Emiter *e, S32 offset) {
-    // TODO check if offset can be an S8;
+    if ((offset <= -128 && offset <= 0) || (offset < 128 && offset > 0)) {
+        x64_emiter_push_byte(e, 0xEB);
+        x64_emiter_push_byte(e, (Byte)(offset & 0xFF));
+    } else {
+        x64_emiter_push_byte(e, 0xE9);
+        x64_emit_s32(e, offset);
+    }
 
-    x64_emiter_push_byte(e, 0xE9);
-    x64_emit_s32(e, offset);
 }
 
 void x64_encode_ret(X64Emiter *e) {
