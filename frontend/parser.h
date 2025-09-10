@@ -28,7 +28,22 @@ struct TreeFnDecl {
     TreeDecl *prev, *next;
     // Internal
 
-    TreeFunction proto;
+    TreeFunction *type;
+    SoupFunction soup; // what the frick is this name man
+};
+
+
+typedef struct TreeSymbolCell TreeSymbolCell;
+struct TreeSymbolCell {
+  TreeSymbolCell *next;
+  String name;
+  TreeDecl *decl;
+};
+
+typedef struct TreeSymbolTable TreeSymbolTable;
+struct TreeSymbolTable {
+    U64 capacity;
+
 };
 
 typedef struct TreeParser TreeParser;
@@ -46,5 +61,6 @@ struct TreeParser {
 };
 
 SoupNode *tree_parse_stmt(TreeParser *p);
+TreeDecl *tree_parse_decl(TreeParser *p);
 
 #endif

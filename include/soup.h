@@ -1,3 +1,4 @@
+#pragma once
 
 #include <core.h>
 
@@ -314,10 +315,11 @@ SoupNode *soup_create_binary_expr(
 }
 
 
-SoupNode *soup_create_return(SoupFunction *fn, SoupNode *expr) {
+SoupNode *soup_create_return(SoupFunction *fn, SoupNode *prev_ctrl, SoupNode *expr) {
     SoupNode n = {.kind = SoupNodeKind_Return};
 
     soup_node_alloc_inputs(fn, &n, 2);
+    soup_node_set_input(fn, &n, prev_ctrl, 0);
     soup_node_set_input(fn, &n, expr, 1);
 
     return soup_peephole(fn, &n);

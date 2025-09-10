@@ -63,13 +63,39 @@ S32 string_cmp(String a, String b) {
 }
 
 /*
- * TODO bullet proof
+ * TODO support for binary, octal, and hexadecimal
  */
 S64 string_parse_int(String a) {
+    static char numerals[16] = "0123456789abcdef";
+
+    U32 i = 0;
     S64 x = 0;
-    for (U32 i = 0; i < a.len; i++) {
-        x = x * 10 + (a.str[i] - '0');
+    S64 sign = 1;
+    S64 base = 10;
+
+    if (a.len == 0) return 0;
+
+    if (a.str[0] == '-') {
+        sign = -1;
+        i = 1;
     }
+
+    if (a.str[i] == '0' && ((i + 1) < a.len)) {
+        switch (a.str[i+1]) {
+            case 'b': base = 2; break;
+            case 'o': base = 8; break;
+            case 'x': base = 16; break;
+            default:
+                if (a.str[i + 1] < '0' && a.str[i + 1] > '9') return sign*x;
+        }
+    }
+
+    for (; i < a.len; i++) {
+        // check if we are parsing a number
+        if (a.str[i] < '0' && a.str[i] > '9') return sign * x;
+        x = x * base + (a.str[i] - '0');
+    }
+
 
     return x;
 }

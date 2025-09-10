@@ -122,7 +122,7 @@ SoupNode *tree_parse_stmt(TreeParser *p) {
         case TreeTokenKind_Return: {
             tree_advance_token(p);
             SoupNode *expr = tree_parse_expr(p);
-            SoupNode *ret = soup_create_return(&p->fn, expr);
+            SoupNode *ret = soup_create_return(&p->fn, p->fn.start, expr);
             return ret;
         }
         default:
@@ -168,6 +168,7 @@ TreeFunction tree_parse_function_proto(TreeParser *p, TreeType *returntype) {
 
     while (tok.kind != TreeTokenKind_RParen) {
         // Should enter on a type token,
+    printf("got here");
         TreeType *t = tree_parse_type(p);
         tok = tree_current_token(p);
         if (tok.kind != TreeTokenKind_Identifier) {
@@ -179,6 +180,7 @@ TreeFunction tree_parse_function_proto(TreeParser *p, TreeType *returntype) {
         TreeField *field = arena_push(p->arena, TreeField);
         field->type = t;
         field->name = name;
+        printf("\nType = %p, %.*s\n", t, (int)name.len, name.str);
 
         tree_push_field(&l, field);
 
@@ -211,6 +213,7 @@ TreeDecl *tree_parse_decl(TreeParser *p) {
     }
 
     String name = tree_string_from_token(p, tok);
+    printf("\nType = %p, %.*s\n", t, (int)name.len, name.str);
 
     tree_advance_token(p);
     tok = tree_current_token(p);

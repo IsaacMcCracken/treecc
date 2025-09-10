@@ -101,6 +101,7 @@ void x64_encode_syscall(X64Emiter *e) {
 }
 
 void x64_encode_near_jmp(X64Emiter *e, S32 offset) {
+    // this may be causing issues bug we will see
     if ((offset <= -128 && offset <= 0) || (offset < 128 && offset > 0)) {
         x64_emiter_push_byte(e, 0xEB);
         x64_emiter_push_byte(e, (Byte)(offset & 0xFF));

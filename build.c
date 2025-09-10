@@ -3,3 +3,4 @@
 #include "frontend/parser.c"
 #include "frontend/types.c"
 #include "core/build_core.c"
+#include "soup/x64.c"
