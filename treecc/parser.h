@@ -1,9 +1,9 @@
 #ifndef TREE_PARSER
 #define TREE_PARSER
 
-#include <soup.h>
 #include "tokenizer.h"
 #include "types.h"
+#include "node.h"
 
 typedef U16 TreeDeclKind;
 enum {
