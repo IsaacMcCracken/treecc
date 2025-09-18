@@ -168,7 +168,6 @@ TreeFunction tree_parse_function_proto(TreeParser *p, TreeType *returntype) {
 
     while (tok.kind != TreeTokenKind_RParen) {
         // Should enter on a type token,
-    printf("got here");
         TreeType *t = tree_parse_type(p);
         tok = tree_current_token(p);
         if (tok.kind != TreeTokenKind_Identifier) {
@@ -193,8 +192,11 @@ TreeFunction tree_parse_function_proto(TreeParser *p, TreeType *returntype) {
             continue;
         } else if (tok.kind != TreeTokenKind_RParen) {
             // error
+
         }
     }
+
+    tree_advance_token(p);
 
     TreeFunction signature = (TreeFunction){
         .kind = TreeTypeKind_Function,
@@ -203,6 +205,15 @@ TreeFunction tree_parse_function_proto(TreeParser *p, TreeType *returntype) {
     };
 
     return signature; // todo register function signature in typesystem
+}
+
+TreeDecl *tree_parse_function_decl(TreeParser *p, String name, TreeType *returntype) {
+    TreeFunction proto = tree_parse_function_proto(p, returntype);
+    TreeToken tok = tree_current_token(p);
+    tree_debug_print_token(p, tok);
+
+
+    return 0;
 }
 
 TreeDecl *tree_parse_decl(TreeParser *p) {
@@ -220,7 +231,7 @@ TreeDecl *tree_parse_decl(TreeParser *p) {
     switch (tok.kind) {
         // function definition or proto
         case TreeTokenKind_LParen: {
-            TreeFunction proto = tree_parse_function_proto(p, t);
+            return tree_parse_function_decl(p, name, t);
         } break;
         // initalized global
         case TreeTokenKind_Equals: {

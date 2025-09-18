@@ -15,6 +15,8 @@ enum {
 
   TreeTokenKind_LParen,
   TreeTokenKind_RParen,
+  TreeTokenKind_LBrace,
+  TreeTokenKind_RBrace,
 
   TreeTokenKind_Plus,
   TreeTokenKind_Minus,

@@ -36,6 +36,13 @@ typedef struct {
 } TempArena;
 
 typedef struct {
+    Arena *arena;
+    U64 chunk_align;
+    U64 chunk_size;
+    void *freelist;
+} Pool;
+
+typedef struct {
     char *str;
     U64 len;
 } String;
@@ -55,6 +62,9 @@ void *arena_get_current(Arena *arena);
 void arena_deinit(Arena *arena);
 TempArena temp_arena_begin(Arena *arena);
 void temp_arena_end(TempArena temp);
+
+Pool pool_init(Arena *arena, U64 chunk_align, U64 chunk_size);
+void *pool_alloc(Pool *pool);
 
 S64 string_parse_int(String a);
 char *string_to_cstring(Arena *arena, String s);

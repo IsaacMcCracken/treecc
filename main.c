@@ -1,7 +1,7 @@
 
 #include "stdio.h"
 // #include "soup/soup.h"
-#include "frontend/parser.h"
+#include "treecc/parser.h"
 
 char *src = "int fn() {return 1 + 2;}";
 

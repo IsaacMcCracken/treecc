@@ -42,8 +42,9 @@ struct TreeSymbolCell {
 
 typedef struct TreeSymbolTable TreeSymbolTable;
 struct TreeSymbolTable {
+    TreeSymbolCell **cells;
     U64 capacity;
-
+    Arena *arena;
 };
 
 typedef struct TreeParser TreeParser;
@@ -51,6 +52,7 @@ struct TreeParser {
     Arena *arena;
     Byte *src;
     TreeToken *tokens;
+    TreeSymbolTable symbols;
     TreeTypeMap types;
     U32 tokencount;
     U32 linenum;

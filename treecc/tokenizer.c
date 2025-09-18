@@ -132,7 +132,13 @@ TreeToken *tree_tokenize(
                 case ')':
                     tree_append_token(arena, TreeTokenKind_RParen, prev, curr, &count);
                     break;
-                    case '+':
+                case '{':
+                    tree_append_token(arena, TreeTokenKind_LBrace, prev, curr, &count);
+                    break;
+                case '}':
+                    tree_append_token(arena, TreeTokenKind_RBrace, prev, curr, &count);
+                    break;
+                case '+':
                     tree_append_token(arena, TreeTokenKind_Plus, prev, curr, &count);
                     break;
                 case '-':
