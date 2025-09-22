@@ -1,6 +1,26 @@
 #include "tokenizer.h"
 #include "gen/keywords.c"
 
+char *tree_token_kind_strings[] = {
+    "(nil)",
+    "Int",
+    "Equals",
+    "SemiColon",
+    "Comma",
+    "LParen",
+    "RParen",
+    "LBrace",
+    "RBrace",
+    "Plus",
+    "Minus",
+    "Star",
+    "Slash",
+    "Identifier",
+    "Int_Lit",
+    "Return",
+    "EOF",
+};
+
 B32 tree_tokenizer_init(void) {
     tree_init_token_maps();
     return 1;
@@ -16,7 +36,7 @@ U32 tree_hash_dbj2(Byte *data, U64 len) {
     return hash;
 }
 
-U32 tree_hash_string(String str) {
+U32 tree_hash_keyword(String str) {
     U32 hash = 0;
     switch (str.len) {
         case 0: assert(0);
@@ -82,7 +102,7 @@ void tree_append_keyword_or_identifier(Arena *arena, Byte *src, U32 start, U32 e
 
 
     String tok_str = string_from_source(src, start, end);
-    U32 hash = tree_hash_string(tok_str);
+    U32 hash = tree_hash_keyword(tok_str);
     U32 hashv = hash%KEYWORD_MAP_SIZE;
 
     TreeTokenKind kind = keyword_map[hashv];

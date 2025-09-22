@@ -1,9 +1,12 @@
 
 #include "stdio.h"
-// #include "soup/soup.h"
+
 #include "treecc/parser.h"
 
-char *src = "int fn() {return 1 + 2;}";
+// remove this
+#include "treecc/x64.c"
+
+char *src = "int square(int x) {return x * x;}";
 
 TreeParser tree_parse(char *src) {
     Arena *arena = arena_init(2<<20);
@@ -18,10 +21,16 @@ TreeParser tree_parse(char *src) {
         .cap = type_map_cap,
     };
 
-    SoupFunction fn = (SoupFunction){
+    TreeFunctionGraph fn = (TreeFunctionGraph){
         .arena = arena,
-        .map = soup_map_init(map_arena, 101),
+        .map = tree_map_init(map_arena, 101),
     };
+
+    Arena *scope_arena = arena_init(1<<24);
+    TreeScopeManager scopes = tree_scope_manager_init(scope_arena, 101);
+
+    TreeScopeTable *current_scope = tree_alloc_scope(&scopes, 0);
+
     TreeParser p = {
         .arena = arena,
         .tokens = tokens,
@@ -29,7 +38,10 @@ TreeParser tree_parse(char *src) {
         .types = types,
         .src = (Byte*)src,
         .fn = fn,
+        .scopes = scopes,
+        .current_scope = current_scope,
     };
+
 
 
     TreeDecl *decl = tree_parse_decl(&p);
@@ -40,5 +52,15 @@ TreeParser tree_parse(char *src) {
 int main(int argc, char **argv) {
 
     tree_tokenizer_init();
-    tree_parse(src);
+    TreeParser p = tree_parse(src);
+
+    Arena *arena = arena_init(1<<12);
+    X64Emiter e = x64_emiter_init(arena);
+
+    cgx64_naive_return(&e, p.ret);
+
+    for (U32 i = 0; i < e.len; i++) {
+        printf("0x%02X, ", e.code[i]);
+    }
+    putchar('\n');
 }

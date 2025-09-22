@@ -41,7 +41,7 @@ U32 tree_hash_string(String str) {
 void gen_keywords(void) {
     int mapsize = 53;
 
-    FILE *file = fopen("frontend/gen/keywords.c", "w");
+    FILE *file = fopen("treecc/gen/keywords.c", "w");
 
     printf("f: %p\n", file);
 
@@ -57,11 +57,11 @@ void gen_keywords(void) {
         int len = strlen(keywords[i]);
         fprintf(file, "    keywords[%s] = (String){\"%s\", %d};\n", keyword_enums[i], keywords[i], len);
     }
-    
+
     for (int i = 0; i < keyword_count(); i++) {
         U32 hash = tree_hash_string((String){keywords[i], strlen(keywords[i])});
         fprintf(file, "    keyword_map[%d] = %s;\n", hash%mapsize, keyword_enums[i]);
-    }   
+    }
     fprintf(file, "}\n\n");
 
     fclose(file);

@@ -2,8 +2,9 @@
 #define TREE_PARSER
 
 #include "tokenizer.h"
-#include "types.h"
+#include "c_types.h"
 #include "node.h"
+#include "scope_symbol_table.h"
 
 typedef U16 TreeDeclKind;
 enum {
@@ -29,7 +30,7 @@ struct TreeFnDecl {
     // Internal
 
     TreeFunction *type;
-    SoupFunction soup; // what the frick is this name man
+    TreeFunctionGraph g; // what the frick is this name man
 };
 
 
@@ -49,20 +50,22 @@ struct TreeSymbolTable {
 
 typedef struct TreeParser TreeParser;
 struct TreeParser {
-    Arena *arena;
+    Arena *arena; // prolly remove this cuz I think the function is gonnna alloate the nodes
     Byte *src;
     TreeToken *tokens;
+    TreeScopeManager scopes;
+    TreeScopeTable *current_scope;
     TreeSymbolTable symbols;
     TreeTypeMap types;
     U32 tokencount;
     U32 linenum;
     U32 linetok;
     U32 curr;
-    SoupFunction fn;
-    SoupNode *ret;
+    TreeFunctionGraph fn;
+    TreeNode *ret;
 };
 
-SoupNode *tree_parse_stmt(TreeParser *p);
+TreeNode *tree_parse_stmt(TreeParser *p);
 TreeDecl *tree_parse_decl(TreeParser *p);
 
 #endif

@@ -13,6 +13,7 @@ typedef uint8_t Byte;
 
 typedef uint32_t B32;
 
+
 typedef uint8_t U8;
 typedef uint16_t U16;
 typedef uint32_t U32;
@@ -47,10 +48,18 @@ typedef struct {
     U64 len;
 } String;
 
+typedef U8 OSMemoryFlags;
+enum {
+    OSMemoryFlags_Read = 0x1,
+    OSMemoryFlags_Write = 0x2,
+    OSMemoryFlags_Exec = 0x4,
+}
+
 void *os_reserve(U64 size);
 B32 os_commit(void *ptr, U64 size);
 void os_decommit(void *ptr, U64 size);
 void os_release(void *ptr, U64 size);
+void os_protect(void *ptr, U64 size, OSMemoryFlags flags)
 
 U64 mem_align_backward(U64 x, U64 align);
 U64 mem_align_forward(U64 x, U64 align);
@@ -77,6 +86,7 @@ String string_concat(Arena *arena, int count, ...);
 
 #define mem_set(s, c, n) memset(s, c, n)
 #define mem_zero(s, n) memset(s, 0, n)
+#define mem_zero_item(S, T) memset(S, 0, sizeof(T))
 #ifdef _WIN32
 #define mem_alignof(x) __alignof(x)
 #else

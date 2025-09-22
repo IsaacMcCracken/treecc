@@ -10,13 +10,13 @@ struct X64Emiter {
 typedef U8 X64GPRegister;
 enum {
     X64GPRegister_RAX,
-    X64GPRegister_RBX,
     X64GPRegister_RCX,
     X64GPRegister_RDX,
-    X64GPRegister_RSI,
-    X64GPRegister_RDI,
+    X64GPRegister_RBX,
     X64GPRegister_RSP,
     X64GPRegister_RBP,
+    X64GPRegister_RSI,
+    X64GPRegister_RDI,
     X64GPRegister_R8,
     X64GPRegister_R9,
     X64GPRegister_R10,
@@ -92,6 +92,13 @@ void x64_encode_add(X64Emiter *e, X64GPRegister a, X64GPRegister b) {
 void x64_encode_sub(X64Emiter *e, X64GPRegister a, X64GPRegister b) {
     x64_emit_rex_prefix(e, b, a, 1);
     x64_emiter_push_byte(e, 0x29);
+    x64_mod_reg_rm(e, X64Mod_Reg, b, a);
+}
+
+void x64_encode_imul(X64Emiter *e, X64GPRegister a, X64GPRegister b) {
+    x64_emit_rex_prefix(e, b, a, 1);
+    x64_emiter_push_byte(e, 0x0F);
+    x64_emiter_push_byte(e, 0xAF);
     x64_mod_reg_rm(e, X64Mod_Reg, b, a);
 }
 

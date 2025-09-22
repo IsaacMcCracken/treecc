@@ -1,4 +1,4 @@
-#include "types.h"
+#include "c_types.h"
 
 TreeNumber numberinfo[10] = {
   {TreeTypeKind_Number, 0, 0},

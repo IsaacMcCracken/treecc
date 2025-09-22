@@ -1,2 +1,2 @@
-clang meta/keyword.c -o genkeywords
-./genkeywords
+clang meta/meta.c -I include/ -o metagen
+./metagen

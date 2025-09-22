@@ -28,6 +28,7 @@ enum {
 
   TreeTokenKind_Return,
   TreeTokenKind_EOF,
+  TreeTOkenKind_COUNT,
 };
 
 typedef struct TreeToken TreeToken;
@@ -37,8 +38,9 @@ struct TreeToken {
 };
 
 
+extern char *tree_token_kind_strings[];
 B32 tree_tokenizer_init(void);
-U32 tree_hash_string(String str);
+U32 tree_hash_keyword(String str);
 String string_from_source(Byte *src, U32 start, U32 end);
 TreeToken *tree_tokenize(Arena *arena, U32 *tokencount, Byte *src, U32 srclen);
 void print_tokens(TreeToken *tokens, U32 count, Byte *src);

@@ -7,7 +7,7 @@ TreeToken tree_current_token(TreeParser *p) {
 
 void tree_debug_print_token(TreeParser *p, TreeToken tok) {
     String str = string_from_source(p->src, tok.start, tok.end);
-    printf("'%.*s' = %d\n", (int)str.len, str.str, tok.kind);
+    printf("'%.*s' = %s\n", (int)str.len, str.str, tree_token_kind_strings[tok.kind]);
 }
 
 // void tree_error(TreeParser *p, U32 tokenindex, String msg) {
@@ -33,9 +33,37 @@ TreeToken tree_peek_n(TreeParser *p, U32 n) {
     return (TreeToken){.kind = TreeTokenKind_EOF};
 }
 
-
 void tree_advance_token(TreeParser *p) {
     p->curr += 1;
+}
+
+TreeType *tree_parse_type_number(TreeParser *p) {
+    TreeToken tok = tree_current_token(p);
+    switch (tok.kind) {
+        case TreeTokenKind_Int: {
+            TreeType *t = (TreeType*)&numberinfo[TreeNumberKind_S32];
+            return t;
+        }
+    }
+
+    assert(0);
+}
+
+TreeType *tree_parse_type(TreeParser *p) {
+    TreeType *t = 0;
+    TreeToken tok = tree_current_token(p);
+
+    switch (tok.kind) {
+        case TreeTokenKind_Int:{
+            t = tree_parse_type_number(p);
+        } break;
+
+        default: {
+            // error
+        } break;
+    }
+    tree_advance_token(p);
+    return t;
 }
 
 S32 tree_operatator_precedence(TreeToken tok) {
@@ -51,7 +79,7 @@ S32 tree_operatator_precedence(TreeToken tok) {
     }
 }
 
-SoupNode *tree_parse_urinary(TreeParser *p) {
+TreeNode *tree_parse_urinary(TreeParser *p) {
     TreeToken tok = tree_current_token(p);
 
 
@@ -62,8 +90,13 @@ SoupNode *tree_parse_urinary(TreeParser *p) {
         case TreeTokenKind_Int_Lit: {
             String intstr = string_from_source(p->src, tok.start, tok.end);
             S64 v = string_parse_int(intstr);
-            return soup_create_const_int(&p->fn, v);
+            return tree_create_const_int(&p->fn, v);
         }
+        case TreeTokenKind_Identifier: {
+            String name = tree_string_from_token(p, tok);
+            TreeNode *node = tree_scope_lookup_symbol(p->current_scope, name);
+            return node;
+        } break;
         default: {
             String tok_str = string_from_source(p->src, tok.start, tok.end);
             //todo make error
@@ -75,89 +108,104 @@ SoupNode *tree_parse_urinary(TreeParser *p) {
 }
 
 
-SoupNode *tree_parse_binary_expr(TreeParser *p, SoupNode *lhs, S32 precedence) {
+TreeNode *tree_parse_binary_expr(TreeParser *p, TreeNode *lhs, S32 precedence) {
     TreeToken lookahead = tree_current_token(p);
-    // printf("lookahead: "); tree_debug_print_token(p, lookahead);
     while (tree_operatator_precedence(lookahead) >= precedence) {
         TreeToken op = lookahead;
         tree_advance_token(p);
 
-        SoupNode *rhs = tree_parse_urinary(p);
+        TreeNode *rhs = tree_parse_urinary(p);
         lookahead = tree_current_token(p);
         while (tree_operatator_precedence(lookahead) > tree_operatator_precedence(op)) {
             rhs = tree_parse_binary_expr(p, rhs, tree_operatator_precedence(op) + 1);
             lookahead = tree_peek_next(p);
         }
 
-        SoupNodeKind opkind = 0;
+        TreeNodeKind opkind = 0;
         switch (op.kind) {
-            case TreeTokenKind_Plus:    opkind = SoupNodeKind_AddI; break;
-            case TreeTokenKind_Minus:   opkind = SoupNodeKind_SubI; break;
-            case TreeTokenKind_Star:    opkind = SoupNodeKind_MulI; break;
-            case TreeTokenKind_Slash:   opkind = SoupNodeKind_DivI; break;
+            case TreeTokenKind_Plus:    opkind = TreeNodeKind_AddI; break;
+            case TreeTokenKind_Minus:   opkind = TreeNodeKind_SubI; break;
+            case TreeTokenKind_Star:    opkind = TreeNodeKind_MulI; break;
+            case TreeTokenKind_Slash:   opkind = TreeNodeKind_DivI; break;
             default:
                 //emit error
                 fprintf(stderr, "Error: expected a binary operator.\n");
                 break;
         }
 
-        SoupNode *opnode = soup_create_binary_expr(&p->fn, opkind, lhs, rhs);
+        TreeNode *opnode = tree_create_binary_expr(&p->fn, opkind, lhs, rhs);
         lhs = opnode;
     }
 
     return lhs;
 }
 
-SoupNode *tree_parse_expr(TreeParser *p) {
-    SoupNode *lhs = tree_parse_urinary(p);
+TreeNode *tree_parse_expr(TreeParser *p) {
+    TreeNode *lhs = tree_parse_urinary(p);
     return tree_parse_binary_expr(p, lhs, 0);
 }
 
+TreeNode *tree_parse_local_decl_stmt(TreeParser *p) {
+    TreeType *t = tree_parse_type(p);
+
+    TreeToken tok = tree_current_token(p);
+
+    if (tok.kind != TreeTokenKind_Identifier) {
+        // error
+    }
+    String symbol_name = tree_string_from_token(p, tok);
+
+    // TODO: put in the c symbol table
+
+    tree_advance_token(p);
+    tok = tree_current_token(p);
+
+    switch (tok.kind) {
+        case TreeTokenKind_SemiColon: break;
+        case TreeTokenKind_Equals: {
+            tree_advance_token(p);
+            // TODO convert CType to TreeDataKind;
+            TreeNode *expr = tree_parse_expr(p);
+            tree_scope_insert_symbol(&p->scopes, p->current_scope, symbol_name, expr);
+            return expr;
+        } break;
+        default: {
+            // error
+
+        } break;
+    }
+
+    return 0;
+}
 
 
-
-SoupNode *tree_parse_stmt(TreeParser *p) {
+TreeNode *tree_parse_stmt(TreeParser *p) {
     TreeToken tok = tree_current_token(p);
     switch (tok.kind) {
         case TreeTokenKind_Return: {
             tree_advance_token(p);
-            SoupNode *expr = tree_parse_expr(p);
-            SoupNode *ret = soup_create_return(&p->fn, p->fn.start, expr);
+            TreeNode *expr = tree_parse_expr(p);
+            TreeNode *ret = tree_create_return(&p->fn, p->fn.start, expr);
+
+            // TODO: remove this
+            p->ret = ret;
+
             return ret;
         }
+
+        case TreeTokenKind_Int: {
+            TreeNode *expr = tree_parse_local_decl_stmt(p);
+            return expr;
+        }
+
         default:
             // emit error
             break;
     }
 
-    return NULL;
+    return 0;
 }
 
-TreeType *tree_parse_type_number(TreeParser *p) {
-    TreeToken tok = tree_current_token(p);
-    switch (tok.kind) {
-        case TreeTokenKind_Int:
-            return (TreeType*)&numberinfo[TreeNumberKind_S32];
-    }
-
-    assert(0);
-}
-
-TreeType *tree_parse_type(TreeParser *p) {
-    TreeType *t = 0;
-    TreeToken tok = tree_current_token(p);
-    switch (tok.kind) {
-        case TreeTokenKind_Int:{
-            t = tree_parse_type_number(p);
-        } break;
-
-        default: {
-            // error
-        } break;
-    }
-    tree_advance_token(p);
-    return t;
-}
 
 TreeFunction tree_parse_function_proto(TreeParser *p, TreeType *returntype) {
     // enters on a TreeTokenKind_LParen
@@ -166,6 +214,8 @@ TreeFunction tree_parse_function_proto(TreeParser *p, TreeType *returntype) {
 
     TreeFieldList l = {0};
 
+
+    U64 arg_count = 0;
     while (tok.kind != TreeTokenKind_RParen) {
         // Should enter on a type token,
         TreeType *t = tree_parse_type(p);
@@ -175,11 +225,12 @@ TreeFunction tree_parse_function_proto(TreeParser *p, TreeType *returntype) {
         }
 
         String name = tree_string_from_token(p, tok);
+        TreeNode *node = tree_create_proj(&p->fn, p->fn.start, arg_count);
+        tree_scope_insert_symbol(&p->scopes, p->current_scope, name, node);
 
         TreeField *field = arena_push(p->arena, TreeField);
         field->type = t;
         field->name = name;
-        printf("\nType = %p, %.*s\n", t, (int)name.len, name.str);
 
         tree_push_field(&l, field);
 
@@ -194,6 +245,8 @@ TreeFunction tree_parse_function_proto(TreeParser *p, TreeType *returntype) {
             // error
 
         }
+
+        arg_count += 1;
     }
 
     tree_advance_token(p);
@@ -210,7 +263,22 @@ TreeFunction tree_parse_function_proto(TreeParser *p, TreeType *returntype) {
 TreeDecl *tree_parse_function_decl(TreeParser *p, String name, TreeType *returntype) {
     TreeFunction proto = tree_parse_function_proto(p, returntype);
     TreeToken tok = tree_current_token(p);
-    tree_debug_print_token(p, tok);
+
+    // TODO CREATE START NODE THINGY
+    p->fn.start = arena_push(p->fn.arena, TreeNode);
+    p->fn.start->kind = TreeNodeKind_Start;
+
+
+    if (tok.kind == TreeTokenKind_SemiColon) {
+        // reigster in symbol table
+    } else if (tok.kind != TreeTokenKind_LBrace) {
+        // error
+    }
+    tree_advance_token(p);
+
+    TreeNode *ret = tree_parse_stmt(p);
+        p->ret = ret;
+
 
 
     return 0;
@@ -224,7 +292,6 @@ TreeDecl *tree_parse_decl(TreeParser *p) {
     }
 
     String name = tree_string_from_token(p, tok);
-    printf("\nType = %p, %.*s\n", t, (int)name.len, name.str);
 
     tree_advance_token(p);
     tok = tree_current_token(p);
