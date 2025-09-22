@@ -53,13 +53,13 @@ enum {
     OSMemoryFlags_Read = 0x1,
     OSMemoryFlags_Write = 0x2,
     OSMemoryFlags_Exec = 0x4,
-}
+};
 
 void *os_reserve(U64 size);
 B32 os_commit(void *ptr, U64 size);
 void os_decommit(void *ptr, U64 size);
 void os_release(void *ptr, U64 size);
-void os_protect(void *ptr, U64 size, OSMemoryFlags flags)
+void os_protect(void *ptr, U64 size, OSMemoryFlags flags);
 
 U64 mem_align_backward(U64 x, U64 align);
 U64 mem_align_forward(U64 x, U64 align);

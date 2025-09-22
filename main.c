@@ -42,6 +42,7 @@ TreeParser tree_parse(char *src) {
         .current_scope = current_scope,
     };
 
+    // create learning topics
 
 
     TreeDecl *decl = tree_parse_decl(&p);
@@ -63,4 +64,13 @@ int main(int argc, char **argv) {
         printf("0x%02X, ", e.code[i]);
     }
     putchar('\n');
+
+    int (*fp)(int) = (int(*)(int))e.code;
+    os_protect(arena, e.len + sizeof(Arena), OSMemoryFlags_Exec);
+    S64 in = 32;
+    S64 out = fp(in);
+    printf("fp(%ld) = %ld\n", in, out);
+
+
+    return 0;
 }

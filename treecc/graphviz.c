@@ -1,4 +1,4 @@
-#include <soup.h>
+#include <node.h>
 
 char *soup_graphviz_visit_node(FILE *file, SoupNodeMap *visited, SoupNode *node) {
     if (soup_map_lookup(visited, node)) {

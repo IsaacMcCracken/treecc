@@ -12,6 +12,7 @@ X64GPRegister cgx64_naive_expr(X64Emiter *e, TreeNode *expr, X64GPRegister lhs, 
             X64GPRegister l = cgx64_naive_expr(e, expr->inputs[0], lhs, rhs);
             X64GPRegister r = cgx64_naive_expr(e, expr->inputs[1], lhs, rhs);
             x64_encode_imul(e, l, r);
+            return l;
         } break;
         case TreeNodeKind_ConstInt: {
 
@@ -25,6 +26,9 @@ X64GPRegister cgx64_naive_expr(X64Emiter *e, TreeNode *expr, X64GPRegister lhs, 
 }
 
 void cgx64_naive_return(X64Emiter *e, TreeNode *ret){
-    cgx64_naive_expr(e, ret->inputs[1], X64GPRegister_RAX, X64GPRegister_RCX);
+    X64GPRegister out = cgx64_naive_expr(e, ret->inputs[1], X64GPRegister_RAX, X64GPRegister_RCX);
+    if (out != X64GPRegister_RAX) {
+        x64_encode_mov_reg(e, X64GPRegister_RAX, out);
+    }
     x64_encode_ret(e);
 }

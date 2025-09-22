@@ -83,6 +83,12 @@ void x64_mod_reg_rm(X64Emiter *e, U8 mod, X64GPRegister reg, X64GPRegister rm) {
     x64_emiter_push_byte(e, b);
 }
 
+void x64_encode_mov_reg(X64Emiter *e, X64GPRegister dst, X64GPRegister src) {
+    x64_emit_rex_prefix(e, src, dst, 1);
+    x64_emiter_push_byte(e, 0x89);
+    x64_mod_reg_rm(e, X64Mod_Reg, src, dst);
+}
+
 void x64_encode_add(X64Emiter *e, X64GPRegister a, X64GPRegister b) {
     x64_emit_rex_prefix(e, b, a, 1);
     x64_emiter_push_byte(e, 0x01);

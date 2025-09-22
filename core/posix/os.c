@@ -37,8 +37,8 @@ void os_decommit(void *ptr, U64 size) {
 }
 
 void os_protect(void *ptr, U64 size, OSMemoryFlags flags) {
-    int flags = posix_memory_flags(flags);
-    mprotect(ptr, size, flags);
+    int pflags = posix_memory_flags(flags);
+    mprotect(ptr, size, pflags);
 }
 
 void os_release(void *ptr, U64 size) {
