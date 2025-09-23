@@ -47,7 +47,7 @@ void os_release(void *ptr, U64 size) {
     munmap(ptr, size);
 }
 
-Buffer read_entire_file(Arena *arena, String path) {
+Buffer os_read_entire_file(Arena *arena, String path) {
 
     TempArena temp = temp_arena_begin(arena);
     cpath = string_to_cstring(arena, path);
