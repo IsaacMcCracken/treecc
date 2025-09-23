@@ -53,9 +53,12 @@ TreeNode *tree_symbol_table_lookup(TreeSymbolTableNode *table, String s) {
 void tree_map_insert(TreeNodeMap *map, TreeNode *node) {
     U64 hash = tree_node_hash(node);
     U64 hashv = hash % map->cap;
+
     TreeNodeMapCell **slot = &map->cells[hash % map->cap];
+
     while (*slot) {
         if (tree_node_equal((*slot)->node, node)) {
+            // printf("node = %p\n", (*slot)->node);
             return;
         }
         slot = &(*slot)->next;
@@ -80,6 +83,7 @@ TreeNode *tree_map_lookup(TreeNodeMap *map, TreeNode *node) {
     U64 hash = tree_node_hash(node);
     TreeNodeMapCell **slot = &map->cells[hash % map->cap];
     while (*slot) {
+        printf("node = %p slot = %p\n", (*slot)->node, *slot);
         if (tree_node_equal((*slot)->node, node)) {
             return (*slot)->node;
         }
@@ -163,30 +167,46 @@ TreeNode *tree_node_register(TreeFunctionGraph *fn, TreeNode *node) {
 
 
 TreeNode *tree_peepint(TreeFunctionGraph *fn, TreeNode *node) {
+    TreeNode *lhs = node->inputs[0];
+    TreeNode *rhs = node->inputs[1];
     // Constfold
-    if (node->inputs[0]->kind == TreeNodeKind_ConstInt && node->inputs[1]->kind == TreeNodeKind_ConstInt) {
+    if (lhs->kind == TreeNodeKind_ConstInt && rhs->kind == TreeNodeKind_ConstInt) {
         S64 v = 0;
         switch (node->kind) {
             case TreeNodeKind_AddI: {
-                v = node->inputs[0]->vint + node->inputs[1]->vint;
+                v = lhs->vint + rhs->vint;
             } break;
             case TreeNodeKind_SubI: {
-                v = node->inputs[0]->vint - node->inputs[1]->vint;
+                v = lhs->vint - rhs->vint;
             } break;
             case TreeNodeKind_MulI: {
-                v = node->inputs[0]->vint * node->inputs[1]->vint;
+                v = lhs->vint * rhs->vint;
             } break;
             case TreeNodeKind_DivI: {
-                v = node->inputs[0]->vint / node->inputs[1]->vint;
+                v = lhs->vint / rhs->vint;
             } break;
         }
         // look in so see if we need to kill nodes
         return tree_create_const_int(fn, v);
     }
 
-    if (node->inputs[0]->kind == TreeNodeKind_ConstInt && node->inputs[1]->kind != TreeNodeKind_ConstInt) {
-        return tree_create_binary_expr(fn, node->kind, node->inputs[1], node->inputs[0]);
+    if (node->kind == TreeNodeKind_AddI || node->kind == TreeNodeKind_MulI) {
+
+        // if 2 * x -> x * 2  or 2 * (x * 4) -> (x * 4) * 2
+        // swap sides because of communtivity
+        if (lhs->kind == TreeNodeKind_ConstInt && rhs->kind != TreeNodeKind_ConstInt) {
+            return tree_create_binary_expr(fn, node->kind, rhs, lhs);
+        }
+
+        // (x * 4) * 2 -> x * (4 * 2)
+        // constant propagation
+        if (lhs->kind == node->kind && lhs->inputs[1]->kind == TreeNodeKind_ConstInt && rhs->kind == TreeNodeKind_ConstInt) {
+            TreeNode *new_rhs = tree_create_binary_expr(fn, node->kind, lhs->inputs[1], rhs);
+            return tree_create_binary_expr(fn, node->kind, lhs->inputs[1], new_rhs);
+        }
+
     }
+
 
     return node;
 }

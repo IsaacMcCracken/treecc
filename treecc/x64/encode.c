@@ -108,6 +108,24 @@ void x64_encode_imul(X64Emiter *e, X64GPRegister a, X64GPRegister b) {
     x64_mod_reg_rm(e, X64Mod_Reg, b, a);
 }
 
+void x64_encode_imul_imm(X64Emiter *e, X64GPRegister a, X64GPRegister b, S32 imm) {
+    x64_emit_rex_prefix(e, b, a, 1);
+    if (imm < 128 && imm >= -128) {
+        x64_emiter_push_byte(e, 0x6B);
+        x64_mod_reg_rm(e, X64Mod_Reg, b, a);
+
+        S8 imm8 = (S8)imm;
+        x64_emiter_push_byte(e, *(U8*)&imm8); // bit hacking :)
+
+    } else {
+        x64_emiter_push_byte(e, 0x69);
+        x64_mod_reg_rm(e, X64Mod_Reg, b, a);
+        x64_emit_s32(e, imm);
+    }
+
+
+}
+
 void x64_encode_syscall(X64Emiter *e) {
     Byte b[2] = {0x0F, 0x05};
     x64_emiter_push_bytes(e, b, 2);

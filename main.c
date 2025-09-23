@@ -6,7 +6,7 @@
 // remove this
 #include "treecc/x64.c"
 
-char *src = "int square(int x) {return x * x;}";
+char *src = "int square(int x) {return 3 * x * 4;}";
 
 TreeParser tree_parse(char *src) {
     Arena *arena = arena_init(2<<20);

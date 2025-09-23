@@ -2,6 +2,6 @@
 #define PLATFORM "Windows"
 #include "windows/os.c"
 #else
-#define PLATFORM "Linux"
+#define PLATFORM "Posix"
 #include "posix/os.c"
 #endif
