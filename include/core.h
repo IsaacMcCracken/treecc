@@ -13,7 +13,6 @@ typedef uint8_t Byte;
 
 typedef uint32_t B32;
 
-
 typedef uint8_t U8;
 typedef uint16_t U16;
 typedef uint32_t U32;
@@ -48,13 +47,16 @@ typedef struct {
     U64 len;
 } String;
 
+typedef String Buffer;
+
+Buffer read_entire_file(Arena *arena, String path);
+
 typedef U8 OSMemoryFlags;
 enum {
     OSMemoryFlags_Read = 0x1,
     OSMemoryFlags_Write = 0x2,
     OSMemoryFlags_Exec = 0x4,
 };
-
 void *os_reserve(U64 size);
 B32 os_commit(void *ptr, U64 size);
 void os_decommit(void *ptr, U64 size);
