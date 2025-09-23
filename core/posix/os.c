@@ -48,7 +48,12 @@ void os_release(void *ptr, U64 size) {
 }
 
 Buffer read_entire_file(Arena *arena, String path) {
-    int file = open(string_to_cstring(arena, path), O_RDONLY);
+
+    TempArena temp = temp_arena_begin(arena);
+    cpath = string_to_cstring(arena, path);
+
+    int file = open(cpath, O_RDONLY);
+    temp_arena_end(temp);
     if (file == -1) {
         /*handle error*/
     }
