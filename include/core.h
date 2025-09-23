@@ -47,6 +47,10 @@ typedef struct {
     U64 len;
 } String;
 
+typedef String Buffer;
+
+Buffer read_entire_file(Arena *arena, String path);
+
 void *os_reserve(U64 size);
 B32 os_commit(void *ptr, U64 size);
 void os_decommit(void *ptr, U64 size);
