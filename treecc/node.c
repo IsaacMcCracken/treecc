@@ -1,5 +1,22 @@
 #include "node.h"
 
+
+void tree_node_print_expr_debug(TreeNode *expr) {
+    switch (expr->kind) {
+        case TreeNodeKind_Return: printf("return "); tree_node_print_expr_debug(expr->inputs[1]); break;
+        case TreeNodeKind_ConstInt: printf("%ld", expr->vint); break;
+        case TreeNodeKind_Proj: printf("arg%ld", expr->vint); break;
+        case TreeNodeKind_MulI: {
+            putchar('(');
+            tree_node_print_expr_debug(expr->inputs[0]);
+            printf(" * ");
+            tree_node_print_expr_debug(expr->inputs[1]);
+            putchar(')');
+        } break;
+    }
+}
+
+
 U32 tree_hash_string(String s) {
     return tree_hash_dbj2((Byte*)s.str, s.len);
 }
@@ -55,7 +72,6 @@ void tree_map_insert(TreeNodeMap *map, TreeNode *node) {
     U64 hashv = hash % map->cap;
 
     TreeNodeMapCell **slot = &map->cells[hash % map->cap];
-
     while (*slot) {
         if (tree_node_equal((*slot)->node, node)) {
             // printf("node = %p\n", (*slot)->node);
@@ -65,6 +81,7 @@ void tree_map_insert(TreeNodeMap *map, TreeNode *node) {
     }
 
     TreeNodeMapCell *cell = arena_push(map->arena, TreeNodeMapCell);
+    cell->node = node;
     *slot = cell;
 }
 
@@ -82,12 +99,13 @@ TreeNodeMap tree_map_init(Arena *arena, U64 map_cap) {
 TreeNode *tree_map_lookup(TreeNodeMap *map, TreeNode *node) {
     U64 hash = tree_node_hash(node);
     TreeNodeMapCell **slot = &map->cells[hash % map->cap];
+    int i = 0;
     while (*slot) {
-        printf("node = %p slot = %p\n", (*slot)->node, *slot);
         if (tree_node_equal((*slot)->node, node)) {
             return (*slot)->node;
         }
         slot = &(*slot)->next;
+        i++;
     }
 
     return NULL;
@@ -156,7 +174,10 @@ void tree_node_set_input(TreeFunctionGraph *fn, TreeNode *node, TreeNode *input,
 
 TreeNode *tree_node_register(TreeFunctionGraph *fn, TreeNode *node) {
     TreeNode *canonical = tree_map_lookup(&fn->map, node);
-    if (canonical) return canonical;
+    if (canonical) {
+        printf("does  "); tree_node_print_expr_debug(node); printf(" = "); tree_node_print_expr_debug(canonical); putchar('\n');
+        return canonical;
+    }
 
     canonical = arena_push(fn->arena, TreeNode);
     mem_cpy_item(canonical, node, TreeNode);
@@ -200,9 +221,15 @@ TreeNode *tree_peepint(TreeFunctionGraph *fn, TreeNode *node) {
 
         // (x * 4) * 2 -> x * (4 * 2)
         // constant propagation
-        if (lhs->kind == node->kind && lhs->inputs[1]->kind == TreeNodeKind_ConstInt && rhs->kind == TreeNodeKind_ConstInt) {
+        if (lhs->kind == node->kind && lhs->inputs[1]->kind == TreeNodeKind_ConstInt) {
+            printf("old expr = "); tree_node_print_expr_debug(node); putchar('\n');
+            printf("new lhs = "); tree_node_print_expr_debug(lhs->inputs[0]); putchar('\n');
+
             TreeNode *new_rhs = tree_create_binary_expr(fn, node->kind, lhs->inputs[1], rhs);
-            return tree_create_binary_expr(fn, node->kind, lhs->inputs[1], new_rhs);
+            printf("new rhs = "); tree_node_print_expr_debug(new_rhs); putchar('\n');
+            TreeNode *new_expr = tree_create_binary_expr(fn, node->kind, lhs->inputs[0], new_rhs);
+            printf("new expr = "); tree_node_print_expr_debug(new_expr); putchar('\n');
+            return new_expr;
         }
 
     }
@@ -248,6 +275,8 @@ TreeNode *tree_create_binary_expr(
     tree_node_alloc_inputs(fn, &n, 2);
     tree_node_set_input(fn, &n, lhs, 0);
     tree_node_set_input(fn, &n, rhs, 1);
+
+    printf("binary expr = "); tree_node_print_expr_debug(&n); putchar('\n');
 
     return tree_peephole(fn, &n);
 }

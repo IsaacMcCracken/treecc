@@ -6,7 +6,8 @@
 // remove this
 #include "treecc/x64.c"
 
-char *src = "int square(int x) {return 3 * x * 4;}";
+char *src = "int square(int x) {return 2 * x * x;}";
+
 
 TreeParser tree_parse(char *src) {
     Arena *arena = arena_init(2<<20);
@@ -23,7 +24,7 @@ TreeParser tree_parse(char *src) {
 
     TreeFunctionGraph fn = (TreeFunctionGraph){
         .arena = arena,
-        .map = tree_map_init(map_arena, 101),
+        .map = tree_map_init(map_arena, 4093),
     };
 
     Arena *scope_arena = arena_init(1<<24);
@@ -58,7 +59,13 @@ int main(int argc, char **argv) {
     Arena *arena = arena_init(1<<12);
     X64Emiter e = x64_emiter_init(arena);
 
+    tree_node_print_expr_debug(p.ret);
+    putchar('\n');
     cgx64_naive_return(&e, p.ret);
+
+
+    // WHY testing
+    TreeNode *arg0 = tree_create_proj(p->n)
 
     for (U32 i = 0; i < e.len; i++) {
         printf("0x%02X, ", e.code[i]);

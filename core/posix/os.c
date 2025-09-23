@@ -50,7 +50,7 @@ void os_release(void *ptr, U64 size) {
 Buffer os_read_entire_file(Arena *arena, String path) {
 
     TempArena temp = temp_arena_begin(arena);
-    cpath = string_to_cstring(arena, path);
+    char *cpath = string_to_cstring(arena, path);
 
     int file = open(cpath, O_RDONLY);
     temp_arena_end(temp);

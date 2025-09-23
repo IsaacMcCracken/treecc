@@ -29,7 +29,6 @@ enum {
     TreeNodeKind_ConstInt,
     TreeNodeKind_Proj,
     TreeNodeKind_Phi,
-
 };
 
 
@@ -89,6 +88,10 @@ struct TreeFunctionGraph {
     TreeNodeMap map;
     TreeNode *start;
 };
+
+// temporary
+
+void tree_node_print_expr_debug(TreeNode *expr);
 
 // Builder Functions
 TreeNode *tree_create_const_int(TreeFunctionGraph *fn, S64 v);

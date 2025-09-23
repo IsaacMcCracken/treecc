@@ -11,3 +11,5 @@ meta.exe
 genkeywords
 meta.obj
 .zed/
+des.c
+des
