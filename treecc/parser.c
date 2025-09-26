@@ -167,6 +167,7 @@ TreeNode *tree_parse_local_decl_stmt(TreeParser *p) {
             // TODO convert CType to TreeDataKind;
             TreeNode *expr = tree_parse_expr(p);
             tree_scope_insert_symbol(&p->scopes, p->current_scope, symbol_name, expr);
+
             return expr;
         } break;
         default: {
@@ -179,23 +180,30 @@ TreeNode *tree_parse_local_decl_stmt(TreeParser *p) {
 }
 
 
-TreeNode *tree_parse_stmt(TreeParser *p) {
+TreeNode *tree_parse_stmt(TreeParser *p, TreeNode *prev_ctrl) {
     TreeToken tok = tree_current_token(p);
+
+    TreeNode *result = 0;
+
     switch (tok.kind) {
         case TreeTokenKind_Return: {
             tree_advance_token(p);
             TreeNode *expr = tree_parse_expr(p);
-            TreeNode *ret = tree_create_return(&p->fn, p->fn.start, expr);
+            TreeNode *ret = tree_create_return(&p->fn, prev_ctrl, expr);
+
+            printf("return\n");
 
             // TODO: remove this
             p->ret = ret;
 
-            return ret;
+            result = ret;
         }
 
         case TreeTokenKind_Int: {
+            printf("local\n");
             TreeNode *expr = tree_parse_local_decl_stmt(p);
-            return expr;
+            result = expr;
+
         }
 
         default:
@@ -203,7 +211,18 @@ TreeNode *tree_parse_stmt(TreeParser *p) {
             break;
     }
 
-    return 0;
+    tok = tree_current_token(p);
+    tree_debug_print_token(p, tok);
+    if (tok.kind != TreeTokenKind_SemiColon) {
+        // emit error
+        printf("what the flip"); tree_debug_print_token(p, tok);
+    }
+
+    tree_advance_token(p);
+    tok = tree_current_token(p);
+
+
+    return result;
 }
 
 
@@ -260,6 +279,19 @@ TreeFunction tree_parse_function_proto(TreeParser *p, TreeType *returntype) {
     return signature; // todo register function signature in typesystem
 }
 
+void tree_parse_block(TreeParser *p, TreeNode *prev_ctrl) {
+    // should enter on a '{' token
+    tree_advance_token(p);
+    int i = 0;
+    TreeToken tok = tree_current_token(p);
+    while (tok.kind != TreeTokenKind_RBrace &&  i < 3) {
+        tree_parse_stmt(p, prev_ctrl);
+        tok = tree_current_token(p);
+        // tree_debug_print_token(p, tok);
+        i += 1;
+    }
+}
+
 TreeDecl *tree_parse_function_decl(TreeParser *p, String name, TreeType *returntype) {
     TreeFunction proto = tree_parse_function_proto(p, returntype);
     TreeToken tok = tree_current_token(p);
@@ -274,17 +306,19 @@ TreeDecl *tree_parse_function_decl(TreeParser *p, String name, TreeType *returnt
     } else if (tok.kind != TreeTokenKind_LBrace) {
         // error
     }
-    tree_advance_token(p);
 
-    TreeNode *ret = tree_parse_stmt(p);
-        p->ret = ret;
-
-
+    tree_parse_block(p, p->fn.start);
 
     return 0;
 }
 
 TreeDecl *tree_parse_decl(TreeParser *p) {
+
+    for (U32 i = 0; i < p->tokencount; i++) {
+        tree_debug_print_token(p, p->tokens[i]);
+    }
+    printf("^ TOKENS\n");
+
     TreeType *t = tree_parse_type(p);
     TreeToken tok = tree_current_token(p);
     if (tok.kind != TreeTokenKind_Identifier) {

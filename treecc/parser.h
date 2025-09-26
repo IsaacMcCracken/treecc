@@ -65,7 +65,7 @@ struct TreeParser {
     TreeNode *ret;
 };
 
-TreeNode *tree_parse_stmt(TreeParser *p);
+TreeNode *tree_parse_stmt(TreeParser *p, TreeNode *prev_ctrl);
 TreeDecl *tree_parse_decl(TreeParser *p);
 
 #endif

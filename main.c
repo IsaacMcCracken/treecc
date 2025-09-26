@@ -6,7 +6,7 @@
 // remove this
 #include "treecc/x64.c"
 
-char *src = "int square(int x) {return 2 * x * x;}";
+char *src = "int square(int x) {int c = x - x; return c;}";
 
 
 TreeParser tree_parse(char *src) {
@@ -65,12 +65,13 @@ int main(int argc, char **argv) {
 
 
     // WHY testing
-    TreeNode *arg0 = tree_create_proj(p->n)
+    // TreeNode *arg0 = tree_create_proj(p->n)
 
     for (U32 i = 0; i < e.len; i++) {
         printf("0x%02X, ", e.code[i]);
     }
     putchar('\n');
+
 
     int (*fp)(int) = (int(*)(int))e.code;
     os_protect(arena, e.len + sizeof(Arena), OSMemoryFlags_Exec);

@@ -64,6 +64,19 @@ void x64_emit_s32(X64Emiter *e, S32 x) {
     x64_emiter_push_bytes(e, buf, 4);
 }
 
+void x64_emit_s64(X64Emiter *e, S64 x) {
+    Byte buf[8];
+    buf[0] = x & 0xFF;
+    buf[1] = (x >> 8) & 0xFF;
+    buf[2] = (x >> 16) & 0xFF;
+    buf[3] = (x >> 24) & 0xFF;
+    buf[4] = (x >> 32) & 0xFF;
+    buf[5] = (x >> 40) & 0xFF;
+    buf[6] = (x >> 48) & 0xFF;
+    buf[7] = (x >> 56) & 0xFF;
+    x64_emiter_push_bytes(e, buf, 8);
+}
+
 void x64_emit_rex_prefix(
     X64Emiter *e,
     X64GPRegister reg,
@@ -89,10 +102,47 @@ void x64_encode_mov_reg(X64Emiter *e, X64GPRegister dst, X64GPRegister src) {
     x64_mod_reg_rm(e, X64Mod_Reg, src, dst);
 }
 
+void x64_encode_mov_imm(X64Emiter *e, X64GPRegister reg, S64 imm) {
+    if (imm >= S32_MIN && imm <= S32_MAX) {
+        x64_emit_rex_prefix(e, 0, reg, 1);
+        x64_emiter_push_byte(e, 0xC7);
+        x64_mod_reg_rm(e, X64Mod_Reg, 0, reg);
+        S32 imm32 = (S32)imm;
+        x64_emit_s32(e, imm32);
+    } else {
+        x64_emit_rex_prefix(e, 0, 0, 1);
+        x64_emiter_push_byte(e, 0xB8 + reg);
+        x64_emit_s64(e, imm);
+    }
+}
+
+void x64_encode_xor(X64Emiter *e, X64GPRegister a, X64GPRegister b) {
+    x64_emit_rex_prefix(e, b, a, 1);
+    x64_emiter_push_byte(e, 0x31);
+    x64_mod_reg_rm(e, X64Mod_Reg, b, a);
+}
+
 void x64_encode_add(X64Emiter *e, X64GPRegister a, X64GPRegister b) {
     x64_emit_rex_prefix(e, b, a, 1);
     x64_emiter_push_byte(e, 0x01);
     x64_mod_reg_rm(e, X64Mod_Reg, b, a);
+}
+
+
+void x64_encode_add_imm(X64Emiter *e, X64GPRegister reg, S32 imm) {
+    x64_emit_rex_prefix(e, 0, reg, 1);
+    if (imm < 128 && imm >= -128) {
+        x64_emiter_push_byte(e, 0x83);
+        x64_mod_reg_rm(e, X64Mod_Reg, 0, reg);
+
+        S8 imm8 = (S8)imm;
+        x64_emiter_push_byte(e, *(U8*)&imm8); // bit hacking :)
+
+    } else {
+        x64_emiter_push_byte(e, 0x81);
+        x64_mod_reg_rm(e, X64Mod_Reg, 0, reg);
+        x64_emit_s32(e, imm);
+    }
 }
 
 void x64_encode_sub(X64Emiter *e, X64GPRegister a, X64GPRegister b) {
@@ -122,8 +172,6 @@ void x64_encode_imul_imm(X64Emiter *e, X64GPRegister a, X64GPRegister b, S32 imm
         x64_mod_reg_rm(e, X64Mod_Reg, b, a);
         x64_emit_s32(e, imm);
     }
-
-
 }
 
 void x64_encode_syscall(X64Emiter *e) {

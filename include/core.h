@@ -1,3 +1,12 @@
+/*
+ * Core Library
+ * Designed to get around the hardships of C and have all the things you
+ * you need to get started on a project right away
+ *
+ * Copyright Isaac McCracken, Thomas Gordon
+ *
+ */
+
 #ifndef CORE_H
 #define CORE_H
 
@@ -6,8 +15,6 @@
 #include <assert.h>
 #include <stdarg.h>
 
-#define PAGE_SIZE (1 << 12)
-#define LARGE_PAGE_SIZE (1 << 16)
 
 typedef uint8_t Byte;
 
@@ -22,6 +29,27 @@ typedef int8_t S8;
 typedef int16_t S16;
 typedef int32_t S32;
 typedef int64_t S64;
+
+#define PAGE_SIZE (1 << 12)
+#define LARGE_PAGE_SIZE (1 << 16)
+
+#define KILOBYTE(X) (X)<<10
+#define MEGABYTE(X) (X)<<20
+#define GIGABYTE(X) (U64)(X)<<10
+
+#define U8_MAX 0xFF
+#define U16_MAX 0xFFFF
+#define U32_MAX 0xFFFFFFFFUL
+#define U64_MAX 0xFFFFFFFFFFFFFFFFULL
+
+#define S8_MIN   (-0x80)
+#define S8_MAX   0x7F
+#define S16_MIN  (-0x8000)
+#define S16_MAX  0x7FFF
+#define S32_MIN   (-0x7FFFFFFF - 1)  // guaranteed int literal
+#define S32_MAX    0x7FFFFFFF
+#define S64_MIN  (-0x7FFFFFFFFFFFFFFFLL - 1)  // avoids literal overflow
+#define S64_MAX   0x7FFFFFFFFFFFFFFFLL
 
 typedef struct {
     U64 pos;

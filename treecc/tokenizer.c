@@ -181,7 +181,6 @@ TreeToken *tree_tokenize(
                     break;
             }
         }
-
     }
 
     *tokencount = count;
