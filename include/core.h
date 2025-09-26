@@ -15,8 +15,21 @@
 #include <assert.h>
 #include <stdarg.h>
 
+// Platform Things
+#ifdef _WIN32
+#define CORE_PLATFORM_WINDOWS
+#else 
+#define CORE_PLATFORM_POSIX
+#endif
+
+#ifdef _MSC_VER
+#define CORE_MSVC
+#pragma warning(disable : 4477)
+#endif
+
 
 typedef uint8_t Byte;
+typedef uintptr_t UIntPtr;
 
 typedef uint32_t B32;
 
@@ -77,6 +90,25 @@ typedef struct {
 
 typedef String Buffer;
 
+typedef struct {
+    String fullpath; // probably allocated
+    String name; // points to fullpath
+    U64 size;
+    B32 is_dir;
+} FileInfo;
+
+
+typedef UIntPtr OSHandle;
+
+typedef U16 OSFileFlags;
+enum {
+    OSFileFlag_Read,
+    OSFileFlag_Write,
+    OSFileFlag_Append,
+    OSFileFlag_Create,
+    // maybe more
+};
+
 
 typedef U8 OSMemoryFlags;
 enum {
@@ -85,6 +117,9 @@ enum {
     OSMemoryFlags_Exec = 0x4,
 };
 
+
+OSHandle os_file_open(OSFileFlags flags, String path);
+void os_file_close(OSHandle file);
 void *os_reserve(U64 size);
 B32 os_commit(void *ptr, U64 size);
 void os_decommit(void *ptr, U64 size);
@@ -118,7 +153,7 @@ String string_concat(Arena *arena, int count, ...);
 #define mem_set(s, c, n) memset(s, c, n)
 #define mem_zero(s, n) memset(s, 0, n)
 #define mem_zero_item(S, T) memset(S, 0, sizeof(T))
-#ifdef _WIN32
+#ifdef CORE_MSVC
 #define mem_alignof(x) __alignof(x)
 #else
 #define mem_alignof(x) __alignof__(x)

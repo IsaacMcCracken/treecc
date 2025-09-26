@@ -27,6 +27,10 @@ enum {
   TreeTokenKind_Int_Lit,
 
   TreeTokenKind_Return,
+  TreeTokenKind_If,
+  TreeTokenKind_Else,
+
+
   TreeTokenKind_EOF,
   TreeTOkenKind_COUNT,
 };

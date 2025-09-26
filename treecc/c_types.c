@@ -76,7 +76,7 @@ B32 tree_type_equal(TreeType *a, TreeType *b) {
 U64 tree_type_hash(TreeType *type) {
     switch (type->kind) {
         case TreeTypeKind_Number: {
-            TreeNumber *num = (TreeNumber*)num;
+            TreeNumber *num = (TreeNumber*)type;
             return num->size | (num->flags << 4);
         } break;
 

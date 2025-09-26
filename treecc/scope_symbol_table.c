@@ -20,14 +20,18 @@ TreeScopeManager tree_scope_manager_init(Arena *arena, U64 default_cap) {
     };
 }
 
-TreeScopeTable *tree_alloc_scope(TreeScopeManager *m, TreeScopeTable *prev) {
+TreeScopeTable *tree_alloc_scope_with_cap(TreeScopeManager *m, U64 cap, TreeScopeTable *prev) {
     TreeScopeTable *scope = arena_push(m->arena, TreeScopeTable);
-    TreeScopeSymbolCell **cells = arena_push_array(m->arena, TreeScopeSymbolCell*, m->default_cap);
+    TreeScopeSymbolCell **cells = arena_push_array(m->arena, TreeScopeSymbolCell*, cap);
     scope->cells = cells;
-    scope->capacity = m->default_cap;
+    scope->capacity = cap;
     scope->prev = prev;
 
     return scope;
+}
+
+TreeScopeTable *tree_alloc_scope(TreeScopeManager *m, TreeScopeTable *prev) {
+    return tree_alloc_scope_with_cap(m, m->default_cap, prev);
 }
 
 TreeScopeSymbolCell *tree_scope_symbol_cell_alloc(TreeScopeManager *m) {

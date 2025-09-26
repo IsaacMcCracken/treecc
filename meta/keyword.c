@@ -7,11 +7,15 @@
 char *keywords[] = {
     "return",
     "int",
+    "if",
+    "else",
 };
 
 char *keyword_enums[] = {
   "TreeTokenKind_Return",
   "TreeTokenKind_Int",
+  "TreeTokenKind_If",
+  "TreeTokenKind_Else",
 };
 
 U64 keyword_count() {
@@ -49,8 +53,8 @@ void gen_keywords(void) {
     fprintf(file, "#define KEYWORD_MAP_SIZE %d\n\n", mapsize);
 
 
-    fprintf(file, "String keywords[64];\n");
-    fprintf(file, "TreeTokenKind keyword_map[%d];\n\n\n", mapsize);
+    fprintf(file, "String keywords[64] = {0};\n");
+    fprintf(file, "TreeTokenKind keyword_map[%d] = {0};\n\n\n", mapsize);
 
     fprintf(file, "void tree_init_token_maps(void) {\n");
     for (int i = 0; i < keyword_count(); i++) {

@@ -47,6 +47,7 @@ TreeType *tree_parse_type_number(TreeParser *p) {
     }
 
     assert(0);
+    return 0;
 }
 
 TreeType *tree_parse_type(TreeParser *p) {
@@ -186,40 +187,34 @@ TreeNode *tree_parse_stmt(TreeParser *p, TreeNode *prev_ctrl) {
     TreeNode *result = 0;
 
     switch (tok.kind) {
+        // parse_return
         case TreeTokenKind_Return: {
             tree_advance_token(p);
             TreeNode *expr = tree_parse_expr(p);
             TreeNode *ret = tree_create_return(&p->fn, prev_ctrl, expr);
-
-            printf("return\n");
-
             // TODO: remove this
             p->ret = ret;
-
             result = ret;
-        }
-
+        } break;
         case TreeTokenKind_Int: {
-            printf("local\n");
             TreeNode *expr = tree_parse_local_decl_stmt(p);
             result = expr;
+        } break;
+        // parse_if
+        case TreeTokenKind_If: {
 
-        }
-
+        } break;
         default:
             // emit error
             break;
     }
 
     tok = tree_current_token(p);
-    tree_debug_print_token(p, tok);
     if (tok.kind != TreeTokenKind_SemiColon) {
         // emit error
         printf("what the flip"); tree_debug_print_token(p, tok);
     }
-
     tree_advance_token(p);
-    tok = tree_current_token(p);
 
 
     return result;
@@ -313,12 +308,6 @@ TreeDecl *tree_parse_function_decl(TreeParser *p, String name, TreeType *returnt
 }
 
 TreeDecl *tree_parse_decl(TreeParser *p) {
-
-    for (U32 i = 0; i < p->tokencount; i++) {
-        tree_debug_print_token(p, p->tokens[i]);
-    }
-    printf("^ TOKENS\n");
-
     TreeType *t = tree_parse_type(p);
     TreeToken tok = tree_current_token(p);
     if (tok.kind != TreeTokenKind_Identifier) {
