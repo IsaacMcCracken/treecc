@@ -13,3 +13,4 @@ meta.obj
 .zed/
 des.c
 des
+.cache/

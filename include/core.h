@@ -18,7 +18,7 @@
 // Platform Things
 #ifdef _WIN32
 #define CORE_PLATFORM_WINDOWS
-#else 
+#else
 #define CORE_PLATFORM_POSIX
 #endif
 
@@ -26,7 +26,6 @@
 #define CORE_MSVC
 #pragma warning(disable : 4477)
 #endif
-
 
 typedef uint8_t Byte;
 typedef uintptr_t UIntPtr;
@@ -46,23 +45,23 @@ typedef int64_t S64;
 #define PAGE_SIZE (1 << 12)
 #define LARGE_PAGE_SIZE (1 << 16)
 
-#define KILOBYTE(X) (X)<<10
-#define MEGABYTE(X) (X)<<20
-#define GIGABYTE(X) (U64)(X)<<10
+#define KILOBYTE(X) (X) << 10
+#define MEGABYTE(X) (X) << 20
+#define GIGABYTE(X) (U64)(X) << 10
 
 #define U8_MAX 0xFF
 #define U16_MAX 0xFFFF
 #define U32_MAX 0xFFFFFFFFUL
 #define U64_MAX 0xFFFFFFFFFFFFFFFFULL
 
-#define S8_MIN   (-0x80)
-#define S8_MAX   0x7F
-#define S16_MIN  (-0x8000)
-#define S16_MAX  0x7FFF
-#define S32_MIN   (-0x7FFFFFFF - 1)  // guaranteed int literal
-#define S32_MAX    0x7FFFFFFF
-#define S64_MIN  (-0x7FFFFFFFFFFFFFFFLL - 1)  // avoids literal overflow
-#define S64_MAX   0x7FFFFFFFFFFFFFFFLL
+#define S8_MIN (-0x80)
+#define S8_MAX 0x7F
+#define S16_MIN (-0x8000)
+#define S16_MAX 0x7FFF
+#define S32_MIN (-0x7FFFFFFF - 1) // guaranteed int literal
+#define S32_MAX 0x7FFFFFFF
+#define S64_MIN (-0x7FFFFFFFFFFFFFFFLL - 1) // avoids literal overflow
+#define S64_MAX 0x7FFFFFFFFFFFFFFFLL
 
 typedef struct {
     U64 pos;
@@ -91,12 +90,17 @@ typedef struct {
 typedef String Buffer;
 
 typedef struct {
+    Arena *arena;
+    Byte *base;
+    size_t len;
+} BufferBuilder;
+
+typedef struct {
     String fullpath; // probably allocated
     String name; // points to fullpath
     U64 size;
     B32 is_dir;
 } FileInfo;
-
 
 typedef UIntPtr OSHandle;
 
@@ -109,7 +113,6 @@ enum {
     // maybe more
 };
 
-
 typedef U8 OSMemoryFlags;
 enum {
     OSMemoryFlags_Read = 0x1,
@@ -117,6 +120,13 @@ enum {
     OSMemoryFlags_Exec = 0x4,
 };
 
+String builder_to_string(BufferBuilder *bb);
+void builder_write_number(BufferBuilder *bb, U64 num, const U8 base);
+void builder_write_signed_dec(BufferBuilder *bb, S64 num);
+#define builder_write_unsigned_dec(bb, num) builder_write_number(bb, num, 10)
+#define builder_write_oct(bb, num) builder_write_number(bb, num, 8)
+#define builder_write_hex(bb, num) builder_write_number(bb, num, 16)
+#define builder_write_bin(bb, num) builder_write_number(bb, num, 2)
 
 OSHandle os_file_open(OSFileFlags flags, String path);
 void os_file_close(OSHandle file);
