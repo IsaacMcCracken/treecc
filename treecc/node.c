@@ -302,6 +302,17 @@ TreeNode *tree_create_const_int(TreeFunctionGraph *fn, S64 v) {
     return tree_peephole(fn, &n);
 }
 
+TreeNode *tree_create_urnary_expr(TreeFunctionGraph *fn, TreeNodeKind kind, TreeNode *input) {
+    TreeNode n = (TreeNode){
+        .kind = kind,
+    };
+
+    tree_node_alloc_inputs(fn, &n, 1);
+    tree_node_set_input(fn, &n, input, 0);
+
+    return tree_peephole(fn, &n);
+}
+
 TreeNode *tree_create_binary_expr(
     TreeFunctionGraph *fn,
     TreeDataKind kind,

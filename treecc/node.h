@@ -24,6 +24,7 @@ enum {
     TreeNodeKind_NegI,
     TreeNodeKind_MulI,
     TreeNodeKind_DivI,
+    TreeNodeKind_NegateI,
 
     // Data
     TreeNodeKind_ConstInt,
@@ -95,6 +96,7 @@ void tree_node_print_expr_debug(TreeNode *expr);
 
 // Builder Functions
 TreeNode *tree_create_const_int(TreeFunctionGraph *fn, S64 v);
+TreeNode *tree_create_urnary_expr(TreeFunctionGraph *fn, TreeNodeKind kind, TreeNode *input);
 TreeNode *tree_create_binary_expr(TreeFunctionGraph *fn, TreeDataKind kind, TreeNode *lhs, TreeNode *rhs);
 U32 tree_hash_dbj2(Byte *data, U64 len);
 
