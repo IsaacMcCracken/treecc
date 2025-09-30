@@ -41,8 +41,10 @@ struct TreeScopeManager {
 U64 tree_symbol_hash(String s);
 TreeScopeManager tree_scope_manager_init(Arena *arena, U64 default_cap);
 TreeScopeTable *tree_alloc_scope(TreeScopeManager *m, TreeScopeTable *prev);
+TreeScopeTable *tree_duplicate_scope(TreeScopeManager *m, TreeScopeTable *original);
 TreeScopeSymbolCell *tree_scope_symbol_cell_alloc(TreeScopeManager *m);
-void tree_free_scope(TreeScopeManager *m, TreeScopeTable *s);
+void tree_free_single_scope(TreeScopeManager *m, TreeScopeTable *s);
+void tree_free_all_scopes(TreeScopeManager *m, TreeScopeTable *s);
 void tree_scope_insert_symbol(TreeScopeManager *m, TreeScopeTable *s, String name, TreeNode *node);
 TreeNode *tree_scope_lookup_symbol(TreeScopeTable *s, String name);
 

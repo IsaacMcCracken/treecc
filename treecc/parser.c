@@ -80,7 +80,7 @@ S32 tree_operatator_precedence(TreeToken tok) {
     }
 }
 
-TreeNode *tree_parse_urinary(TreeParser *p) {
+TreeNode *tree_parse_urnary(TreeParser *p) {
     TreeToken tok = tree_current_token(p);
 
 
@@ -98,9 +98,32 @@ TreeNode *tree_parse_urinary(TreeParser *p) {
             TreeNode *node = tree_scope_lookup_symbol(p->current_scope, name);
             return node;
         } break;
+
+        case TreeTokenKind_Minus: {
+            tree_advance_token(p);
+            TreeNode *input = tree_parse_urnary(p);
+            return tree_create_urnary_expr(&p->fn, TreeNodeKind_NegateI, input);
+        } break;
+
+        // could be type conversion
+        case TreeTokenKind_LParen: {
+            tree_advance_token(p);
+            tok = tree_current_token(p); // todo type conversion
+
+            TreeNode *expr = tree_parse_expr(p);
+
+            tok = tree_current_token(p);
+
+            if (tok.kind != TreeTokenKind_RParen) {
+                // emit error
+            }
+
+            tree_advance_token(p);
+        } break;
+
         default: {
             String tok_str = string_from_source(p->src, tok.start, tok.end);
-            //todo make error
+            //todo emit error
             fprintf(stderr, "Error: Did not expect token '%.*s'\n", (int)tok_str.len, tok_str.str);
         } break;
     }
@@ -115,7 +138,7 @@ TreeNode *tree_parse_binary_expr(TreeParser *p, TreeNode *lhs, S32 precedence) {
         TreeToken op = lookahead;
         tree_advance_token(p);
 
-        TreeNode *rhs = tree_parse_urinary(p);
+        TreeNode *rhs = tree_parse_urnary(p);
         lookahead = tree_current_token(p);
         while (tree_operatator_precedence(lookahead) > tree_operatator_precedence(op)) {
             rhs = tree_parse_binary_expr(p, rhs, tree_operatator_precedence(op) + 1);
@@ -142,7 +165,7 @@ TreeNode *tree_parse_binary_expr(TreeParser *p, TreeNode *lhs, S32 precedence) {
 }
 
 TreeNode *tree_parse_expr(TreeParser *p) {
-    TreeNode *lhs = tree_parse_urinary(p);
+    TreeNode *lhs = tree_parse_urnary(p);
     return tree_parse_binary_expr(p, lhs, 0);
 }
 
@@ -202,7 +225,47 @@ TreeNode *tree_parse_stmt(TreeParser *p, TreeNode *prev_ctrl) {
         } break;
         // parse_if
         case TreeTokenKind_If: {
+            tree_advance_token(p);
+            tok = tree_current_token(p);
+            if (tok.kind != TreeTokenKind_LParen) {
+                // emit error
+            }
 
+            TreeNode *cond = tree_parse_expr(p);
+
+            tok = tree_current_token(p);
+
+            if (tok.kind == TreeTokenKind_RParen) {
+                // emit error
+            }
+
+            tree_advance_token(p);
+            tok = tree_current_token(p);
+
+            TreeScopeTable *true_scope = p->current_scope;
+            TreeScopeTable *false_scope = tree_duplicate_scope(&p->scopes, true_scope);
+
+            if (tok.kind == TreeTokenKind_LBrace) {
+                tree_parse_scope(p, prev_ctrl);
+            } else {
+                TreeNode *stmt = tree_parse_stmt(p, prev_ctrl);
+            }
+
+
+        } break;
+
+        case TreeTokenKind_Identifier: {
+            tree_advance_token(p);
+            TreeToken lookahead = tree_current_token(p);
+            switch (lookahead.kind) {
+                case TreeTokenKind_Equals: {
+                    // TODO
+                }break;
+
+                default: {
+
+                } break;
+            }
         } break;
         default:
             // emit error
@@ -274,17 +337,26 @@ TreeFunction tree_parse_function_proto(TreeParser *p, TreeType *returntype) {
     return signature; // todo register function signature in typesystem
 }
 
-void tree_parse_block(TreeParser *p, TreeNode *prev_ctrl) {
+void tree_parse_scope(TreeParser *p, TreeNode *prev_ctrl) {
     // should enter on a '{' token
     tree_advance_token(p);
-    int i = 0;
+
+    // set up lower new scope
+    TreeScopeTable *new_scope = tree_alloc_scope(&p->scopes, p->current_scope);
+    p->current_scope = new_scope;
+
+
     TreeToken tok = tree_current_token(p);
-    while (tok.kind != TreeTokenKind_RBrace &&  i < 3) {
+    while (p->curr < p->tokencount && tok.kind != TreeTokenKind_RBrace) {
         tree_parse_stmt(p, prev_ctrl);
         tok = tree_current_token(p);
         // tree_debug_print_token(p, tok);
-        i += 1;
     }
+
+    // pop the scope
+    TreeScopeTable *prev = p->current_scope->prev;
+    tree_free_single_scope(&p->scopes, p->current_scope);
+    p->current_scope = prev;
 }
 
 TreeDecl *tree_parse_function_decl(TreeParser *p, String name, TreeType *returntype) {
@@ -302,7 +374,7 @@ TreeDecl *tree_parse_function_decl(TreeParser *p, String name, TreeType *returnt
         // error
     }
 
-    tree_parse_block(p, p->fn.start);
+    tree_parse_scope(p, p->fn.start);
 
     return 0;
 }
