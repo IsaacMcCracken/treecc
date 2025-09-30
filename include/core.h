@@ -120,13 +120,17 @@ enum {
     OSMemoryFlags_Exec = 0x4,
 };
 
+BufferBuilder builder_init(Arena *arena);
+
 String builder_to_string(BufferBuilder *bb);
+void builder_write_string(BufferBuilder *bb, String string);
 void builder_write_number(BufferBuilder *bb, U64 num, const U8 base);
 void builder_write_signed_dec(BufferBuilder *bb, S64 num);
 #define builder_write_unsigned_dec(bb, num) builder_write_number(bb, num, 10)
 #define builder_write_oct(bb, num) builder_write_number(bb, num, 8)
 #define builder_write_hex(bb, num) builder_write_number(bb, num, 16)
 #define builder_write_bin(bb, num) builder_write_number(bb, num, 2)
+void builder_write_float(BufferBuilder *bb, float num, const U8 precision);
 
 OSHandle os_file_open(OSFileFlags flags, String path);
 void os_file_close(OSHandle file);
