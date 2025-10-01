@@ -69,12 +69,26 @@ TreeType *tree_parse_type(TreeParser *p) {
 
 S32 tree_operatator_precedence(TreeToken tok) {
     switch (tok.kind) {
+        // TODO Logical || value = 3
+        // TODO Logical && value = 4
+        // TODO Bitwise | value = 5
+        // TODO Bitwise ^ value = 6
+        // TODO Bitwise & value = 7
+        case TreeTokenKind_LogicEqual:
+        case TreeTokenKind_LogicNotEqual:
+            return 8;
+        case TreeTokenKind_LogicGreaterThan:
+        case TreeTokenKind_LogicGreaterEqual:
+        case TreeTokenKind_LogicLesserThan:
+        case TreeTokenKind_LogicLesserEqual:
+            return 9;
+        // TODO Bit shit (value = 10)
         case TreeTokenKind_Minus:
         case TreeTokenKind_Plus:
-            return 10;
+            return 11;
         case TreeTokenKind_Star:
         case TreeTokenKind_Slash:
-            return 20;
+            return 13;
         default:
             return -1;
     }
@@ -105,6 +119,12 @@ TreeNode *tree_parse_urnary(TreeParser *p) {
             return tree_create_urnary_expr(&p->fn, TreeNodeKind_NegateI, input);
         } break;
 
+        case TreeTokenKind_LogicNot: {
+            tree_advance_token(p);
+            TreeNode *input = tree_parse_urnary(p);
+            return tree_create_urnary_expr(&p->fn, TreeNodeKind_Not, input);
+        } break;
+
         // could be type conversion
         case TreeTokenKind_LParen: {
             tree_advance_token(p);
@@ -124,7 +144,8 @@ TreeNode *tree_parse_urnary(TreeParser *p) {
         default: {
             String tok_str = string_from_source(p->src, tok.start, tok.end);
             //todo emit error
-            fprintf(stderr, "Error: Did not expect token '%.*s'\n", (int)tok_str.len, tok_str.str);
+            fprintf(stderr, "Error: gd expect token '%.*s'\n", (int)tok_str.len, tok_str.str);
+            assert(0);
         } break;
     }
 
@@ -151,6 +172,12 @@ TreeNode *tree_parse_binary_expr(TreeParser *p, TreeNode *lhs, S32 precedence) {
             case TreeTokenKind_Minus:   opkind = TreeNodeKind_SubI; break;
             case TreeTokenKind_Star:    opkind = TreeNodeKind_MulI; break;
             case TreeTokenKind_Slash:   opkind = TreeNodeKind_DivI; break;
+            case TreeTokenKind_LogicEqual: opkind  = TreeNodeKind_EqualI; break;
+            case TreeTokenKind_LogicNotEqual: opkind  = TreeNodeKind_NotEqualI; break;
+            case TreeTokenKind_LogicGreaterThan: opkind  = TreeNodeKind_GreaterThanI; break;
+            case TreeTokenKind_LogicGreaterEqual: opkind  = TreeNodeKind_GreaterEqualI; break;
+            case TreeTokenKind_LogicLesserThan: opkind  = TreeNodeKind_LesserThanI; break;
+            case TreeTokenKind_LogicLesserEqual: opkind  = TreeNodeKind_LesserEqualI; break;
             default:
                 //emit error
                 fprintf(stderr, "Error: expected a binary operator.\n");
@@ -231,6 +258,7 @@ TreeNode *tree_parse_stmt(TreeParser *p, TreeNode *prev_ctrl) {
                 // emit error
             }
 
+            tree_advance_token(p);
             TreeNode *cond = tree_parse_expr(p);
 
             tok = tree_current_token(p);
@@ -251,6 +279,17 @@ TreeNode *tree_parse_stmt(TreeParser *p, TreeNode *prev_ctrl) {
                 TreeNode *stmt = tree_parse_stmt(p, prev_ctrl);
             }
 
+            p->current_scope = false_scope;
+
+            tok = tree_current_token(p);
+            if (tok.kind == TreeTokenKind_Else) {
+                tree_advance_token(p);
+                tok = tree_current_token(p);
+                if (tok.kind == TreeTokenKind_LBrace) {
+
+                }
+            }
+
 
         } break;
 
@@ -258,12 +297,21 @@ TreeNode *tree_parse_stmt(TreeParser *p, TreeNode *prev_ctrl) {
             tree_advance_token(p);
             TreeToken lookahead = tree_current_token(p);
             switch (lookahead.kind) {
+                // update stmt i.e. " x = x + 1; "
                 case TreeTokenKind_Equals: {
-                    // TODO
+                    String name = tree_string_from_token(p, tok);
+                    tree_advance_token(p);
+                    TreeNode *expr = tree_parse_expr(p);
+                    tree_scope_update_symbol(p->current_scope, name, expr);
                 }break;
 
-                default: {
+                // void function call i.e. " fn(args); "
+                case TreeTokenKind_LParen: {
+                    // TODO
+                } break;
 
+                default: {
+                    // emit error
                 } break;
             }
         } break;
@@ -319,8 +367,7 @@ TreeFunction tree_parse_function_proto(TreeParser *p, TreeType *returntype) {
             tok = tree_current_token(p);
             continue;
         } else if (tok.kind != TreeTokenKind_RParen) {
-            // error
-
+            // emit error
         }
 
         arg_count += 1;

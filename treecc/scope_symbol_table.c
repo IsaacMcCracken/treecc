@@ -166,3 +166,28 @@ void tree_scope_insert_symbol(TreeScopeManager *m, TreeScopeTable *s, String nam
     *cell = new;
 
 }
+
+TreeScopeTable *tree_merge_scopes(TreeFunctionGraph *fn, TreeNode *region, TreeScopeTable *this, TreeScopeTable *that) {
+    assert(that);
+
+    TreeScopeSymbolCell *cell = this->head;
+    while (cell) {
+        TreeNode *this_node = cell->node;
+        TreeNode *that_node = tree_scope_lookup_symbol(that, cell->name);
+
+        if (this_node != that_node) {
+            // create phi
+            TreeNode *phi = tree_create_phi2(fn, region, this_node, that_node);
+
+        }
+
+        cell = cell->next;
+    }
+
+    if (this->prev) {
+        tree_merge_scopes(fn, region, this->prev, that->prev);
+    }
+
+
+    return this;
+}

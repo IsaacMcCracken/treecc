@@ -207,9 +207,16 @@ TreeNode *tree_node_register(TreeFunctionGraph *fn, TreeNode *node) {
 
 
 TreeNode *tree_peepint(TreeFunctionGraph *fn, TreeNode *node) {
+    // constfold urnary expression
+    if (node->kind == TreeNodeKind_NegateI && (node->inputs[0]->kind == TreeNodeKind_ConstInt)) {
+        return tree_create_const_int(fn, -node->inputs[0]->vint);
+    } else  if (node->kind == TreeNodeKind_Not && node->inputs[0]->kind == TreeNodeKind_ConstInt) {
+        return tree_create_const_int(fn, !node->inputs[0]->vint);
+    }
+
     TreeNode *lhs = node->inputs[0];
     TreeNode *rhs = node->inputs[1];
-    // Constfold
+    // Constfold binary expression
     if (lhs->kind == TreeNodeKind_ConstInt && rhs->kind == TreeNodeKind_ConstInt) {
         S64 v = 0;
         switch (node->kind) {
@@ -281,6 +288,14 @@ TreeNode *tree_peephole(TreeFunctionGraph *fn, TreeNode *node) {
     node = tree_node_register(fn, node);
 
     switch (node->kind) {
+        case TreeNodeKind_Not:
+        case TreeNodeKind_EqualI:
+        case TreeNodeKind_NotEqualI:
+        case TreeNodeKind_GreaterThanI:
+        case TreeNodeKind_GreaterEqualI:
+        case TreeNodeKind_LesserThanI:
+        case TreeNodeKind_LesserEqualI:
+        case TreeNodeKind_NegateI:
         case TreeNodeKind_AddI:
         case TreeNodeKind_SubI:
         case TreeNodeKind_MulI:
@@ -343,6 +358,40 @@ TreeNode *tree_create_return(TreeFunctionGraph *fn, TreeNode *prev_ctrl, TreeNod
     tree_node_alloc_inputs(fn, &n, 2);
     tree_node_set_input(fn, &n, prev_ctrl, 0);
     tree_node_set_input(fn, &n, expr, 1);
+
+    return tree_peephole(fn, &n);
+}
+
+TreeNode *tree_create_phi2(TreeFunctionGraph *fn, TreeNode *region, TreeNode *a, TreeNode *b) {
+    TreeNode n = {.kind = TreeNodeKind_Phi};
+
+    tree_node_alloc_inputs(fn, &n, 3);
+    tree_node_set_input(fn, &n, region, 0);
+    tree_node_set_input(fn, &n, region, 1);
+    tree_node_set_input(fn, &n, region, 2);
+
+    return tree_peephole(fn, &n);
+}
+
+TreeNode *tree_create_if(TreeFunctionGraph *fn, TreeNode *prev_ctrl) {
+    TreeNode n = {.kind = TreeNodeKind_If};
+
+    tree_node_alloc_inputs(fn, &n, 1);
+    tree_node_set_input(fn, &n, prev_ctrl, 0);
+
+    tree_node_alloc_users(fn, &n, 2);
+
+    return tree_peephole(fn, &n);
+}
+
+TreeNode *tree_create_region_for_if(TreeFunctionGraph *fn, TreeNode *t, TreeNode *f, U16 output_reserves) {
+    TreeNode n = {.kind = TreeNodeKind_Region};
+
+    tree_node_alloc_inputs(fn, &n, 2);
+    tree_node_set_input(fn, &n, t, 0);
+    tree_node_set_input(fn, &n, f, 1);
+
+    if (output_reserves) tree_node_alloc_users(fn, &n, output_reserves);
 
     return tree_peephole(fn, &n);
 }

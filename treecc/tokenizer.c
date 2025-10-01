@@ -176,9 +176,49 @@ TreeToken *tree_tokenize(
                 case ',':
                     tree_append_token(arena, TreeTokenKind_Comma, prev, curr, &count);
                     break;
-                case '=':
-                    tree_append_token(arena, TreeTokenKind_Equals, prev, curr, &count);
-                    break;
+                case '=': {
+                    // TODO bound check
+                    if (src[curr] == '=') {
+                        curr += 1;
+                        tree_append_token(arena, TreeTokenKind_LogicEqual, prev, curr, &count);
+                    } else {
+                        tree_append_token(arena, TreeTokenKind_Equals, prev, curr, &count);
+                    }
+
+                } break;
+
+                case '!': {
+                    // TODO bound check
+                    if (src[curr] == '=') {
+                        curr += 1;
+                        tree_append_token(arena, TreeTokenKind_LogicNotEqual, prev, curr, &count);
+                    } else {
+                        tree_append_token(arena, TreeTokenKind_LogicNot, prev, curr, &count);
+                    }
+
+                } break;
+
+                case '>': {
+                    // TODO bound check
+                    if (src[curr] == '=') {
+                        curr += 1;
+                        tree_append_token(arena, TreeTokenKind_LogicGreaterEqual, prev, curr, &count);
+                    } else {
+                        tree_append_token(arena, TreeTokenKind_LogicGreaterThan, prev, curr, &count);
+                    }
+
+                } break;
+
+                case '<': {
+                    // TODO bound check
+                    if (src[curr] == '=') {
+                        curr += 1;
+                        tree_append_token(arena, TreeTokenKind_LogicLesserEqual, prev, curr, &count);
+                    } else {
+                        tree_append_token(arena, TreeTokenKind_LogicLesserThan, prev, curr, &count);
+                    }
+
+                } break;
             }
         }
     }

@@ -18,7 +18,7 @@
 // Platform Things
 #ifdef _WIN32
 #define CORE_PLATFORM_WINDOWS
-#else 
+#else
 #define CORE_PLATFORM_POSIX
 #endif
 
@@ -148,7 +148,7 @@ String string_alloc(Arena *arena, const char *str);
 String string_cpy(Arena *arena, String source);
 String string_concat(Arena *arena, int count, ...);
 
-#define StrLit(str) (String){ str, sizeof(str) - 1 }
+#define str_lit(str) (String){ str, sizeof(str) - 1 }
 
 #define mem_set(s, c, n) memset(s, c, n)
 #define mem_zero(s, n) memset(s, 0, n)
