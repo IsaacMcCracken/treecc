@@ -11,7 +11,10 @@ typedef U16 TreeNodeKind;
 enum {
     TreeNodeKind_Invalid,
 
+    //*****************//
     // Control Flow
+    //*****************//
+
     TreeNodeKind_Start,
     TreeNodeKind_Stop,
     TreeNodeKind_Return,
