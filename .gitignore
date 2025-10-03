@@ -14,3 +14,4 @@ meta.obj
 des.c
 des
 metagen
+.cache/
