@@ -63,6 +63,12 @@ typedef int64_t S64;
 #define S64_MIN (-0x7FFFFFFFFFFFFFFFLL - 1) // avoids literal overflow
 #define S64_MAX 0x7FFFFFFFFFFFFFFFLL
 
+#define TIME_NANOSECOND     1LL
+#define TIME_MICROSECOND    1000LL
+#define TIME_MILLISECOND    1000000LL
+#define TIME_SECOND         1000000000LL
+#define TIME_MINUTE         60000000000LL
+
 typedef struct {
     U64 pos;
     U64 cmt;
@@ -92,8 +98,12 @@ typedef String Buffer;
 typedef struct {
     Arena *arena;
     Byte *base;
-    size_t len;
+    U64 len;
 } BufferBuilder;
+
+typedef struct {
+    S64 nsec;
+} Time;
 
 typedef struct {
     String fullpath; // probably allocated
@@ -162,7 +172,7 @@ String string_alloc(Arena *arena, const char *str);
 String string_cpy(Arena *arena, String source);
 String string_concat(Arena *arena, int count, ...);
 
-#define StrLit(str) (String){ str, sizeof(str) - 1 }
+#define str_lit(str) (String){ str, sizeof(str) - 1 }
 
 #define mem_set(s, c, n) memset(s, c, n)
 #define mem_zero(s, n) memset(s, 0, n)

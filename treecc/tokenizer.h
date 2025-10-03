@@ -23,6 +23,14 @@ enum {
   TreeTokenKind_Star,
   TreeTokenKind_Slash,
 
+  TreeTokenKind_LogicNot,
+  TreeTokenKind_LogicEqual,
+  TreeTokenKind_LogicNotEqual,
+  TreeTokenKind_LogicGreaterThan,
+  TreeTokenKind_LogicGreaterEqual,
+  TreeTokenKind_LogicLesserThan,
+  TreeTokenKind_LogicLesserEqual,
+
   TreeTokenKind_Identifier,
   TreeTokenKind_Int_Lit,
 
@@ -32,7 +40,7 @@ enum {
 
 
   TreeTokenKind_EOF,
-  TreeTOkenKind_COUNT,
+  TreeTokenKind_COUNT,
 };
 
 typedef struct TreeToken TreeToken;

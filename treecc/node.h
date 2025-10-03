@@ -18,13 +18,26 @@ enum {
     TreeNodeKind_If,
     TreeNodeKind_Region,
 
+    //*****************//
     // Data Operations
+    //*****************//
+
+    // Integer Arithmetic
     TreeNodeKind_AddI,
     TreeNodeKind_SubI,
     TreeNodeKind_NegI,
     TreeNodeKind_MulI,
     TreeNodeKind_DivI,
     TreeNodeKind_NegateI,
+
+    // Logic
+    TreeNodeKind_Not,
+    TreeNodeKind_EqualI,
+    TreeNodeKind_NotEqualI,
+    TreeNodeKind_GreaterThanI,
+    TreeNodeKind_GreaterEqualI,
+    TreeNodeKind_LesserThanI,
+    TreeNodeKind_LesserEqualI,
 
     // Data
     TreeNodeKind_ConstInt,
@@ -94,14 +107,20 @@ struct TreeFunctionGraph {
 
 void tree_node_print_expr_debug(TreeNode *expr);
 
+// initalization
+TreeNodeMap tree_map_init(Arena *arena, U64 map_cap);
+U32 tree_hash_dbj2(Byte *data, U64 len);
+
 // Builder Functions
 TreeNode *tree_create_const_int(TreeFunctionGraph *fn, S64 v);
 TreeNode *tree_create_urnary_expr(TreeFunctionGraph *fn, TreeNodeKind kind, TreeNode *input);
 TreeNode *tree_create_binary_expr(TreeFunctionGraph *fn, TreeDataKind kind, TreeNode *lhs, TreeNode *rhs);
-U32 tree_hash_dbj2(Byte *data, U64 len);
 
 TreeNode *tree_create_return(TreeFunctionGraph *fn, TreeNode *prev_ctrl, TreeNode *expr);
 TreeNode *tree_create_proj(TreeFunctionGraph *fn, TreeNode *input, U16 v);
-TreeNodeMap tree_map_init(Arena *arena, U64 map_cap);
+
+TreeNode *tree_create_if(TreeFunctionGraph *fn, TreeNode *prev_ctrl);
+TreeNode *tree_create_region_for_if(TreeFunctionGraph *fn, TreeNode *t, TreeNode *f, U16 output_reserves);
+TreeNode *tree_create_phi2(TreeFunctionGraph *fn, TreeNode *region, TreeNode *a, TreeNode *b);
 
 #endif

@@ -6,10 +6,11 @@
 // remove this
 #include "treecc/x64.c"
 
-char *src = "int fn(int x) {int c = x * 1; return c;}";
+char *src = "int fn() {int x = 1; if (x < 2) x = 2; return x;}";
 
 
 TreeParser tree_parse(char *src) {
+    printf("%s\n", src);
     Arena *arena = arena_init(2<<20);
     U32 tokcount = 0;
     TreeToken *tokens = tree_tokenize(arena, &tokcount, (Byte*)src, strlen(src));
