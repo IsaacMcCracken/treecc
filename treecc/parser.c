@@ -260,6 +260,7 @@ TreeNode *tree_parse_stmt(TreeParser *p, TreeNode *prev_ctrl) {
 
             tree_advance_token(p);
             TreeNode *cond = tree_parse_expr(p);
+            tree_node_print_expr_debug(cond);
 
             tok = tree_current_token(p);
 
@@ -272,6 +273,10 @@ TreeNode *tree_parse_stmt(TreeParser *p, TreeNode *prev_ctrl) {
 
             TreeScopeTable *true_scope = p->current_scope;
             TreeScopeTable *false_scope = tree_duplicate_scope(&p->scopes, true_scope);
+
+            TreeNode *if_node = tree_create_if(&p->fn, prev_ctrl);
+            TreeNode *true_node = tree_create_proj(&p->fn, if_node, 0);
+            TreeNode *false_node = tree_create_proj(&p->fn, if_node, 1);
 
             if (tok.kind == TreeTokenKind_LBrace) {
                 tree_parse_scope(p, prev_ctrl);
@@ -290,7 +295,12 @@ TreeNode *tree_parse_stmt(TreeParser *p, TreeNode *prev_ctrl) {
                 }
             }
 
+            TreeNode *region = tree_create_region_for_if(&p->fn, true_node, false_node, 4);
 
+            p->current_scope = tree_merge_scopes(&p->fn, region, true_scope, false_scope);
+            tree_free_all_scopes(&p->scopes, false_scope);
+
+            return region;
         } break;
 
         case TreeTokenKind_Identifier: {
@@ -323,6 +333,7 @@ TreeNode *tree_parse_stmt(TreeParser *p, TreeNode *prev_ctrl) {
     tok = tree_current_token(p);
     if (tok.kind != TreeTokenKind_SemiColon) {
         // emit error
+        printf("miau: %d\n", tok.kind);
         printf("what the flip"); tree_debug_print_token(p, tok);
     }
     tree_advance_token(p);

@@ -34,6 +34,34 @@ void tree_node_print_expr_debug(TreeNode *expr) {
             tree_node_print_expr_debug(expr->inputs[1]);
             putchar(')');
         } break;
+        case TreeNodeKind_GreaterThanI: {
+            putchar('(');
+            tree_node_print_expr_debug(expr->inputs[0]);
+            printf(" > ");
+            tree_node_print_expr_debug(expr->inputs[1]);
+            putchar(')');
+        } break;
+        case TreeNodeKind_GreaterEqualI: {
+            putchar('(');
+            tree_node_print_expr_debug(expr->inputs[0]);
+            printf(" >= ");
+            tree_node_print_expr_debug(expr->inputs[1]);
+            putchar(')');
+        } break;
+        case TreeNodeKind_LesserThanI: {
+            putchar('(');
+            tree_node_print_expr_debug(expr->inputs[0]);
+            printf(" < ");
+            tree_node_print_expr_debug(expr->inputs[1]);
+            putchar(')');
+        } break;
+        case TreeNodeKind_LesserEqualI: {
+            putchar('(');
+            tree_node_print_expr_debug(expr->inputs[0]);
+            printf(" <= ");
+            tree_node_print_expr_debug(expr->inputs[1]);
+            putchar(')');
+        } break;
     }
 }
 

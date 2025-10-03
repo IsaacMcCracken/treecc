@@ -178,7 +178,8 @@ TreeScopeTable *tree_merge_scopes(TreeFunctionGraph *fn, TreeNode *region, TreeS
         if (this_node != that_node) {
             // create phi
             TreeNode *phi = tree_create_phi2(fn, region, this_node, that_node);
-
+            printf("PHI: %.*s\n", (int)cell->name.len, cell->name.str);
+            tree_scope_update_symbol(this, cell->name, phi);
         }
 
         cell = cell->next;

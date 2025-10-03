@@ -64,6 +64,12 @@ typedef int64_t S64;
 #define S64_MIN  (-0x7FFFFFFFFFFFFFFFLL - 1)  // avoids literal overflow
 #define S64_MAX   0x7FFFFFFFFFFFFFFFLL
 
+#define TIME_NANOSECOND     1LL
+#define TIME_MICROSECOND    1000LL
+#define TIME_MILLISECOND    1000000LL
+#define TIME_SECOND         1000000000LL
+#define TIME_MINUTE         60000000000LL
+
 typedef struct {
     U64 pos;
     U64 cmt;
@@ -89,6 +95,10 @@ typedef struct {
 } String;
 
 typedef String Buffer;
+
+typedef struct {
+    S64 nsec;
+} Time;
 
 typedef struct {
     String fullpath; // probably allocated
