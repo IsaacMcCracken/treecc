@@ -2,4 +2,5 @@
 #include "os.c"
 #include "string.c"
 #include "mem.c"
+#include "builder.c"
 #include "time.c"
