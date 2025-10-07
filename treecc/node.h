@@ -17,6 +17,7 @@ enum {
     TreeNodeKind_Return,
     TreeNodeKind_If,
     TreeNodeKind_Region,
+    TreeNodeKind_Loop,
 
     //*****************//
     // Data Operations

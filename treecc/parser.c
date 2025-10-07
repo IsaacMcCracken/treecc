@@ -303,6 +303,28 @@ TreeNode *tree_parse_stmt(TreeParser *p, TreeNode *prev_ctrl) {
             return region;
         } break;
 
+        case TreeTokenKind_While: {
+            tree_advance_token(p);
+            tok = tree_current_token(p);
+            if (tok.kind != TreeTokenKind_LParen) {
+                // emit error
+            }
+
+            tree_advance_token(p);
+            TreeNode *cond = tree_parse_expr(p);
+            tree_node_print_expr_debug(cond);
+
+            tok = tree_current_token(p);
+
+            if (tok.kind == TreeTokenKind_RParen) {
+                // emit error
+            }
+
+            tree_advance_token(p);
+            tok = tree_current_token(p);
+
+        } break;
+
         case TreeTokenKind_Identifier: {
             tree_advance_token(p);
             TreeToken lookahead = tree_current_token(p);
