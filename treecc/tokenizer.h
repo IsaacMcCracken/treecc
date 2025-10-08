@@ -37,7 +37,7 @@ enum {
   TreeTokenKind_Return,
   TreeTokenKind_If,
   TreeTokenKind_Else,
-
+  TreeTokenKind_While,
 
   TreeTokenKind_EOF,
   TreeTokenKind_COUNT,

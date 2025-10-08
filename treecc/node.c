@@ -160,7 +160,7 @@ TreeNode *tree_map_lookup(TreeNodeMap *map, TreeNode *node) {
 }
 
 // TODO fix this
-void tree_map_delete(TreeNodeMap *map, TreeNode *node) {
+void tree_map_remove(TreeNodeMap *map, TreeNode *node) {
     U64 hash = tree_node_hash(node);
     TreeNodeMapCell **slot = &map->cells[hash % map->cap];
     TreeNodeMapCell *prev = NULL;
@@ -180,7 +180,6 @@ void tree_map_delete(TreeNodeMap *map, TreeNode *node) {
         prev = *slot;
         slot = &(*slot)->next;
     }
-
 }
 
 void tree_node_alloc_inputs(TreeFunctionGraph *fn, TreeNode *node, U16 cap) {
@@ -209,6 +208,36 @@ void tree_node_append_user(TreeFunctionGraph *fn, TreeNode *node, TreeNode *user
 
     node->users[node->userlen] = (TreeUser){user, slot};
     node->userlen += 1;
+}
+
+void tree_node_append_input(TreeFunctionGraph *fn, TreeNode *node, TreeNode *input) {
+    if (node->inputs == 0) {
+        tree_node_alloc_inputs(fn, node, 4);
+    }
+
+    if (node->userlen >= node->usercap) {
+        U16 newcap = node->usercap * 2;
+        TreeNode **new_inputs = arena_push_array(fn->arena, TreeNode*, newcap);
+        mem_cpy_array(new_inputs, node->inputs, TreeUser, node->inputlen);
+        node->inputs = new_inputs;
+    }
+
+    node->inputs[node->inputlen] = input;
+    node->inputlen += 1;
+}
+
+void tree_node_remove_user(TreeNode *node, TreeNode *user) {
+    // unordered remove
+    U16 slot;
+    for (slot = 0; slot < node->userlen; slot++) {
+        if (node->users[slot].n == node) break;
+    }
+
+    if (slot < node->userlen - 1) {
+        mem_cpy_item(&node->users[slot], &node->users[node->userlen - 1], TreeUser);
+    }
+
+    node->userlen -= 1;
 }
 
 void tree_node_set_input(TreeFunctionGraph *fn, TreeNode *node, TreeNode *input, U16 slot) {
@@ -248,6 +277,24 @@ TreeNode *tree_peepint(TreeFunctionGraph *fn, TreeNode *node) {
     if (lhs->kind == TreeNodeKind_ConstInt && rhs->kind == TreeNodeKind_ConstInt) {
         S64 v = 0;
         switch (node->kind) {
+            case TreeNodeKind_EqualI: {
+                v = lhs->vint == rhs->vint;
+            } break;
+            case TreeNodeKind_NotEqualI: {
+                v = lhs->vint != rhs->vint;
+            } break;
+            case TreeNodeKind_GreaterEqualI: {
+                v = lhs->vint >= rhs->vint;
+            } break;
+            case TreeNodeKind_GreaterThanI: {
+                v = lhs->vint > rhs->vint;
+            } break;
+            case TreeNodeKind_LesserEqualI: {
+                v = lhs->vint <= rhs->vint;
+            } break;
+            case TreeNodeKind_LesserThanI: {
+                v = lhs->vint < rhs->vint;
+            } break;
             case TreeNodeKind_AddI: {
                 v = lhs->vint + rhs->vint;
             } break;
@@ -312,9 +359,37 @@ TreeNode *tree_peepint(TreeFunctionGraph *fn, TreeNode *node) {
     return node;
 }
 
+void tree_kill_node(TreeFunctionGraph *fn, TreeNode *node) {
+    // garbage collection info
+    fn->deadspace += sizeof(TreeNode);
+    fn->deadspace += sizeof(TreeUser) * node->usercap;
+    fn->deadspace += sizeof(TreeNode*) * node->inputcap;
+    // TODO if there is extra stuff allocated for special nodes
+    // add that
+
+    // remove from hash map
+    tree_map_remove(&fn->map, node);
+
+    // remove user from inputs
+    for (U16 i = 0; i < node->inputlen; i++) {
+        tree_node_remove_user(node->inputs[i], node);
+        node->inputs[i] = 0;
+    }
+
+    node->inputlen = 0;
+    node->kind = TreeNodeKind_Invalid;
+}
+
+void tree_dead_code_elim(TreeFunctionGraph *fn, TreeNode *node) {
+    if (node->userlen == 0) {
+        tree_kill_node(fn, node);
+    }
+}
+
 TreeNode *tree_peephole(TreeFunctionGraph *fn, TreeNode *node) {
     node = tree_node_register(fn, node);
 
+    TreeNode *new = 0;
     switch (node->kind) {
         case TreeNodeKind_Not:
         case TreeNodeKind_EqualI:
@@ -328,11 +403,17 @@ TreeNode *tree_peephole(TreeFunctionGraph *fn, TreeNode *node) {
         case TreeNodeKind_SubI:
         case TreeNodeKind_MulI:
         case TreeNodeKind_DivI: {
-            node = tree_peepint(fn, node);
+            new = tree_peepint(fn, node);
         } break;
     }
 
-    return node;
+    if (new) {
+        tree_dead_code_elim(fn, node);
+    } else {
+        new = node;
+    }
+
+    return new;
 }
 
 
@@ -387,7 +468,12 @@ TreeNode *tree_create_return(TreeFunctionGraph *fn, TreeNode *prev_ctrl, TreeNod
     tree_node_set_input(fn, &n, prev_ctrl, 0);
     tree_node_set_input(fn, &n, expr, 1);
 
-    return tree_peephole(fn, &n);
+    TreeNode *final = tree_peephole(fn, &n);
+
+    // add return to the stop node
+    tree_node_append_input(fn, fn->stop, final);
+
+    return final;
 }
 
 TreeNode *tree_create_phi2(TreeFunctionGraph *fn, TreeNode *region, TreeNode *a, TreeNode *b) {

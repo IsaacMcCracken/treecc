@@ -102,6 +102,7 @@ struct TreeFunctionGraph {
     U64 deadspace;
     TreeNodeMap map;
     TreeNode *start;
+    TreeNode *stop;
 };
 
 // temporary

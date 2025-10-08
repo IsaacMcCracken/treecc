@@ -323,6 +323,9 @@ TreeNode *tree_parse_stmt(TreeParser *p, TreeNode *prev_ctrl) {
             tree_advance_token(p);
             tok = tree_current_token(p);
 
+            // TreeScopeTable *dup = tree_duplicate_scope(&p->scopes, p->scopes);
+
+
         } break;
 
         case TreeTokenKind_Identifier: {
@@ -443,9 +446,11 @@ TreeDecl *tree_parse_function_decl(TreeParser *p, String name, TreeType *returnt
     TreeFunction proto = tree_parse_function_proto(p, returntype);
     TreeToken tok = tree_current_token(p);
 
-    // TODO CREATE START NODE THINGY
+    // TODO CREATE START/STOP NODE THINGY PROPERLY
     p->fn.start = arena_push(p->fn.arena, TreeNode);
     p->fn.start->kind = TreeNodeKind_Start;
+    p->fn.stop = arena_push(p->fn.arena, TreeNode);
+    p->fn.stop->kind = TreeNodeKind_Stop;
 
 
     if (tok.kind == TreeTokenKind_SemiColon) {
@@ -475,6 +480,7 @@ TreeDecl *tree_parse_decl(TreeParser *p) {
         case TreeTokenKind_LParen: {
             return tree_parse_function_decl(p, name, t);
         } break;
+
         // initalized global
         case TreeTokenKind_Equals: {
         } break;
