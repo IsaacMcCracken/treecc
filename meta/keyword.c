@@ -10,7 +10,10 @@ char *keywords[] = {
     "if",
     "else",
     "while",
+<<<<<<< HEAD
 
+=======
+>>>>>>> 621d45624b515c3dd09fd370390546071c03803e
 };
 
 char *keyword_enums[] = {
@@ -18,7 +21,11 @@ char *keyword_enums[] = {
   "TreeTokenKind_Int",
   "TreeTokenKind_If",
   "TreeTokenKind_Else",
+<<<<<<< HEAD
   "TreeTokenKind_While",
+=======
+  "TreeTokenKind_While"
+>>>>>>> 621d45624b515c3dd09fd370390546071c03803e
 };
 
 U64 keyword_count() {

@@ -20,6 +20,7 @@ enum {
     TreeNodeKind_Return,
     TreeNodeKind_If,
     TreeNodeKind_Region,
+    TreeNodeKind_Loop,
 
     //*****************//
     // Data Operations
@@ -104,6 +105,7 @@ struct TreeFunctionGraph {
     U64 deadspace;
     TreeNodeMap map;
     TreeNode *start;
+    TreeNode *stop;
 };
 
 // temporary
