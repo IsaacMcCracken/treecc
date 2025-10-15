@@ -49,6 +49,13 @@ TreeScopeTable *tree_alloc_scope(TreeScopeManager *m, TreeScopeTable *prev) {
     }
 }
 
+TreeScopeTable *tree_alloc_scope_region(TreeScopeManager *m, TreeScopeTable *prev, TreeNode *region) {
+    TreeScopeTable *scope = tree_alloc_scope(m, prev);
+    scope->region = region;
+
+    return scope
+}
+
 TreeScopeTable *tree_duplicate_scope(TreeScopeManager *m, TreeScopeTable *original) {
     TreeScopeTable *dup_scope = tree_alloc_scope_with_cap(m, original->capacity, 0);
     TreeScopeSymbolCell *cell = original->head;
@@ -122,6 +129,7 @@ TreeScopeSymbolCell *tree_scope_lookup_symbol_cell(TreeScopeTable *s, String nam
 
 TreeNode *tree_scope_lookup_symbol(TreeScopeTable *s, String name) {
     TreeScopeSymbolCell *cell = tree_scope_lookup_symbol_cell(s, name);
+
     return cell->node;
 }
 

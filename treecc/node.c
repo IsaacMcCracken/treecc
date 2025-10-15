@@ -82,41 +82,6 @@ B32 tree_node_equal(TreeNode *a, TreeNode *b) {
     mem_cmp((Byte*)a->inputs, (Byte*)b->inputs, sizeof(TreeNode*) * a->inputlen) == 0;
 }
 
-TreeNode *tree_symbol_table_lookup(TreeSymbolTableNode *table, String s) {
-    U32 hash = tree_hash_string(s);
-    U32 hashv = hash % table->cap;
-    TreeSymbolNodeCell **slot = &table->cells[hashv];
-    while (*slot) {
-        if (string_cmp(s, (*slot)->name) == 0) {
-            return (*slot)->node;
-        }
-
-        slot = &((*slot)->next);
-    }
-
-    return 0;
-}
-
-// B32 tree_symbol_table_insert(TreeSymbolTableNode *table, String s, TreeNode *node) {
-//     U32 hash = tree_hash_string(s);
-//     U32 hashv = hash % table->cap;
-//     TreeSymbolNodeCell **slot = &table->cells[hashv];
-//     while (*slot) {
-//         if (string_cmp(s, (*slot)->name) == 0) {
-//             return 0;
-//         }
-
-//         slot = &((*slot)->next);
-//     }
-
-//     TreeSymbolNodeCell *cell = arena_push(table->arena, TreeSymbolNodeCell);
-//     cell->name = s;
-//     cell->node = node;
-
-//     *slot = cell;
-//     return 1;
-// }
-
 void tree_map_insert(TreeNodeMap *map, TreeNode *node) {
     U64 hash = tree_node_hash(node);
     U64 hashv = hash % map->cap;
@@ -364,8 +329,9 @@ void tree_kill_node(TreeFunctionGraph *fn, TreeNode *node) {
     fn->deadspace += sizeof(TreeNode);
     fn->deadspace += sizeof(TreeUser) * node->usercap;
     fn->deadspace += sizeof(TreeNode*) * node->inputcap;
-    // TODO if there is extra stuff allocated for special nodes
-    // add that
+    // TODO if there is extra stuff allocated for special nodes add to deadspace
+
+    // todo copy graph is there is too much deadspace
 
     // remove from hash map
     tree_map_remove(&fn->map, node);

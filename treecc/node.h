@@ -2,10 +2,16 @@
 #define TREE_NODE_H
 #include <core.h>
 
-typedef U16 TreeDataKind;
+typedef U16 TreeDataType;
 enum {
+  TreeNodeKind_Top,
+  TreeNodeKind_Bottom,
   TreeDataKind_I64,
+  TreeDataKind_Control
+  TreeDataKind_DeadControl
 };
+
+
 
 typedef U16 TreeNodeKind;
 enum {
@@ -57,28 +63,14 @@ struct TreeUser {
 
 struct TreeNode {
     TreeNodeKind kind;
+    TreeDataType type;
+    U16 inputcap, usercap;
+    U16 inputlen, userlen;
+    TreeNode **inputs;
+    TreeUser *users;
     union {
         S64 vint;
     };
-    TreeNode **inputs;
-    TreeUser *users;
-    U16 inputlen, userlen;
-    U16 inputcap, usercap;
-};
-
-typedef struct TreeSymbolNodeCell TreeSymbolNodeCell;
-struct TreeSymbolNodeCell {
-    TreeSymbolNodeCell *next;
-    String name;
-    TreeNode *node;
-};
-
-typedef struct TreeSymbolTableNode TreeSymbolTableNode;
-struct TreeSymbolTableNode {
-    TreeSymbolTableNode *prev;
-    TreeNode node;
-    TreeSymbolNodeCell **cells;
-    U64 cap;
 };
 
 typedef struct TreeNodeMapCell TreeNodeMapCell;

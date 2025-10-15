@@ -34,19 +34,19 @@ struct TreeFnDecl {
 };
 
 
-typedef struct TreeSymbolCell TreeSymbolCell;
-struct TreeSymbolCell {
-  TreeSymbolCell *next;
-  String name;
-  TreeDecl *decl;
-};
+// typedef struct TreeSymbolCell TreeSymbolCell;
+// struct TreeSymbolCell {
+//   TreeSymbolCell *next;
+//   String name;
+//   TreeDecl *decl;
+// };
 
-typedef struct TreeSymbolTable TreeSymbolTable;
-struct TreeSymbolTable {
-    TreeSymbolCell **cells;
-    U64 capacity;
-    Arena *arena;
-};
+// typedef struct TreeSymbolTable TreeSymbolTable;
+// struct TreeSymbolTable {
+//     TreeSymbolCell **cells;
+//     U64 capacity;
+//     Arena *arena;
+// };
 
 typedef struct TreeParser TreeParser;
 struct TreeParser {
@@ -55,7 +55,6 @@ struct TreeParser {
     TreeToken *tokens;
     TreeScopeManager scopes;
     TreeScopeTable *current_scope;
-    TreeSymbolTable symbols;
     TreeTypeMap types;
     U32 tokencount;
     U32 linenum;

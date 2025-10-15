@@ -17,12 +17,13 @@ struct TreeScopeSymbolCell {
 
 typedef struct TreeScopeTable TreeScopeTable;
 struct TreeScopeTable {
-  TreeScopeTable *prev; // previous scope / parent
-  TreeScopeSymbolCell **cells; // buckets for table lookup
-  U64 capacity; // capacity
-  TreeScopeSymbolCell *head; // first symbol (for iteration)
-  TreeScopeSymbolCell *tail; // last symbol (for appending)
-  U64 symbol_count;
+    TreeNode *region; // if there is a region create a phi node on lookup
+    TreeScopeTable *prev; // previous scope / parent
+    TreeScopeSymbolCell **cells; // buckets for table lookup
+    U64 capacity; // capacity
+    TreeScopeSymbolCell *head; // first symbol (for iteration)
+    TreeScopeSymbolCell *tail; // last symbol (for appending)
+    U64 symbol_count;
 };
 
 typedef struct TreeScopeManager TreeScopeManager;
@@ -41,6 +42,7 @@ struct TreeScopeManager {
 U64 tree_symbol_hash(String s);
 TreeScopeManager tree_scope_manager_init(Arena *arena, U64 default_cap);
 TreeScopeTable *tree_alloc_scope(TreeScopeManager *m, TreeScopeTable *prev);
+TreeScopeTable *tree_alloc_scope_region(TreeScopeManager *m, TreeScopeTable *prev,);
 TreeScopeTable *tree_duplicate_scope(TreeScopeManager *m, TreeScopeTable *original);
 TreeScopeTable *tree_merge_scopes(TreeFunctionGraph *fn, TreeNode *region, TreeScopeTable *this, TreeScopeTable *that);
 TreeScopeSymbolCell *tree_scope_symbol_cell_alloc(TreeScopeManager *m);
