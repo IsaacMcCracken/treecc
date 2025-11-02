@@ -31,7 +31,6 @@ TreeParser tree_parse(char *src) {
     Arena *scope_arena = arena_init(1<<24);
     TreeScopeManager scopes = tree_scope_manager_init(scope_arena, 101);
 
-    TreeScopeTable *current_scope = tree_alloc_scope(&scopes, 0);
 
     TreeParser p = {
         .arena = arena,
@@ -41,9 +40,9 @@ TreeParser tree_parse(char *src) {
         .src = (Byte*)src,
         .fn = fn,
         .scopes = scopes,
-        .current_scope = current_scope,
     };
 
+    p.current_scope = tree_alloc_scope(&p, 0);
     // create learning topics
 
 

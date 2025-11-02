@@ -106,6 +106,10 @@ typedef struct {
 } Time;
 
 typedef struct {
+    U64 id[1];
+} Thread;
+
+typedef struct {
     String fullpath; // probably allocated
     String name; // points to fullpath
     U64 size;

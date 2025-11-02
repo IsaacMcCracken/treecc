@@ -4,11 +4,11 @@
 
 typedef U16 TreeDataType;
 enum {
-  TreeNodeKind_Top,
-  TreeNodeKind_Bottom,
-  TreeDataKind_I64,
-  TreeDataKind_Control
-  TreeDataKind_DeadControl
+  TreeDataType_Top,
+  TreeDataType_Bottom,
+  TreeDataType_I64,
+  TreeDataType_Control,
+  TreeDataType_DeadControl,
 };
 
 
@@ -16,6 +16,8 @@ enum {
 typedef U16 TreeNodeKind;
 enum {
     TreeNodeKind_Invalid,
+
+    TreeNodeKind_SymbolTable,
 
     //*****************//
     // Control Flow
@@ -111,7 +113,7 @@ U32 tree_hash_dbj2(Byte *data, U64 len);
 // Builder Functions
 TreeNode *tree_create_const_int(TreeFunctionGraph *fn, S64 v);
 TreeNode *tree_create_urnary_expr(TreeFunctionGraph *fn, TreeNodeKind kind, TreeNode *input);
-TreeNode *tree_create_binary_expr(TreeFunctionGraph *fn, TreeDataKind kind, TreeNode *lhs, TreeNode *rhs);
+TreeNode *tree_create_binary_expr(TreeFunctionGraph *fn, TreeDataType kind, TreeNode *lhs, TreeNode *rhs);
 
 TreeNode *tree_create_return(TreeFunctionGraph *fn, TreeNode *prev_ctrl, TreeNode *expr);
 TreeNode *tree_create_proj(TreeFunctionGraph *fn, TreeNode *input, U16 v);

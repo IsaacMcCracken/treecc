@@ -333,7 +333,7 @@ void tree_kill_node(TreeFunctionGraph *fn, TreeNode *node) {
 
     // todo copy graph is there is too much deadspace
 
-    // remove from hash map
+    // remove from hash map (gvn)
     tree_map_remove(&fn->map, node);
 
     // remove user from inputs
@@ -383,6 +383,7 @@ TreeNode *tree_peephole(TreeFunctionGraph *fn, TreeNode *node) {
 }
 
 
+
 TreeNode *tree_create_const_int(TreeFunctionGraph *fn, S64 v) {
     TreeNode n = (TreeNode){
         .kind = TreeNodeKind_ConstInt,
@@ -405,7 +406,7 @@ TreeNode *tree_create_urnary_expr(TreeFunctionGraph *fn, TreeNodeKind kind, Tree
 
 TreeNode *tree_create_binary_expr(
     TreeFunctionGraph *fn,
-    TreeDataKind kind,
+    TreeDataType kind,
     TreeNode *lhs,
     TreeNode *rhs
 ) {
