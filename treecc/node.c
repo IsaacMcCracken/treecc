@@ -175,7 +175,7 @@ void tree_node_append_user(TreeFunctionGraph *fn, TreeNode *node, TreeNode *user
     node->userlen += 1;
 }
 
-void tree_node_append_input(TreeFunctionGraph *fn, TreeNode *node, TreeNode *input) {
+U16 tree_node_append_input(TreeFunctionGraph *fn, TreeNode *node, TreeNode *input) {
     if (node->inputs == 0) {
         tree_node_alloc_inputs(fn, node, 4);
     }
@@ -187,15 +187,28 @@ void tree_node_append_input(TreeFunctionGraph *fn, TreeNode *node, TreeNode *inp
         node->inputs = new_inputs;
     }
 
+    U16 slot = node->inputlen;
     node->inputs[node->inputlen] = input;
     node->inputlen += 1;
+
+    if (input) {
+        tree_node_append_user(fn, input, node, slot);
+    }
+
+    return slot;
 }
 
 void tree_node_remove_user(TreeNode *node, TreeNode *user) {
     // unordered remove
+    // TODO is the slot in user the pint in the 
     U16 slot;
     for (slot = 0; slot < node->userlen; slot++) {
         if (node->users[slot].n == node) break;
+    }
+
+    if (slot >= node->userlen)  {
+        // TODO BIG ERROR NODE DOES NOT HAVE THIS USER
+        assert(0);
     }
 
     if (slot < node->userlen - 1) {
@@ -352,6 +365,19 @@ void tree_dead_code_elim(TreeFunctionGraph *fn, TreeNode *node) {
     }
 }
 
+TreeNode *tree_peepphi(TreeFunctionGraph *fn, TreeNode *node) {
+    U16 slot;
+    for (slot = 2; slot < node->inputlen; slot++) {
+        if (node->inputs[slot] != node->inputs[1]) break;
+    }
+
+    if (slot == node->inputlen) {
+        return node->inputs[1];
+    }
+
+    return node;
+}
+
 TreeNode *tree_peephole(TreeFunctionGraph *fn, TreeNode *node) {
     node = tree_node_register(fn, node);
 
@@ -370,6 +396,10 @@ TreeNode *tree_peephole(TreeFunctionGraph *fn, TreeNode *node) {
         case TreeNodeKind_MulI:
         case TreeNodeKind_DivI: {
             new = tree_peepint(fn, node);
+        } break;
+
+        case TreeNodeKind_Phi: {
+            new = tree_peepphi(fn, node)
         } break;
     }
 
@@ -476,3 +506,4 @@ TreeNode *tree_create_region_for_if(TreeFunctionGraph *fn, TreeNode *t, TreeNode
 
     return tree_peephole(fn, &n);
 }
+

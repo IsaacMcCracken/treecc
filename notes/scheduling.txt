@@ -1,0 +1,18 @@
+    There are two sub graphs of the Sea of Nodes There is a Control Flow Graph, 
+that is represented by certain node types, Start, If Region, etc. Then there is 
+the data graph, driven by def-use edges between nodes that produce or consume 
+values. From a scheduling standpoint the control flow graph is fixed and immovable. 
+however the nodes that consume or produce data values must have some flexability in 
+terms of when they are executed. 
+
+    The scheduling algorithm works in two phases. First Is schedule early - in this
+phase we do a depth first search walk on the inputs starting from the stop node. we
+schedule each data node to the first control block wehere they are dominated by their 
+inputs
+
+    The second phase is schedule late, in this phase we do a downward walk (DFS) on 
+the outputs starting from the top at the start node, and move data nodes to a block
+between the first block calculated above, and the last control block where they dominated
+all ehtir usese. The placement is subject to the condiditon that is is in the shalowest
+loop nest possilbe and is as control dependent as possible. Additionaly the placement of load
+instruction must ensure correct ording between loads and stores of the same memory location.

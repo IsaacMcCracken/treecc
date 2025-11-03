@@ -1,6 +1,8 @@
 #include "node.h"
 #include "parser.h"
 
+void tree_node_alloc_inputs(TreeFunctionGraph *fn, TreeNode *node, U16 cap);
+U16 tree_node_append_input(TreeFunctionGraph *fn, TreeNode *node, TreeNode *input);
 
 U64 tree_symbol_hash(String s) {
     U64 hash = 1469598103934665603ull;
@@ -13,29 +15,17 @@ U64 tree_symbol_hash(String s) {
 }
 
 
-TreeScopeManager tree_scope_manager_init(Arena *arena, U64 default_cap) {
+TreeScopeManager tree_scope_manager_init(U64 default_cap) {
     return (TreeScopeManager){
-        .arena = arena,
         .default_cap = default_cap,
     };
 }
 
-TreeScopeTable *tree_alloc_scope_with_cap(TreeParser *p, U64 cap, TreeScopeTable *prev) {
-    TreeScopeManager *m = &p->scopes;
-    TreeScopeTable *scope = arena_push(p->arena, TreeScopeTable);
-    TreeScopeSymbolCell **cells = arena_push_array(p->arena, TreeScopeSymbolCell*, cap);
-    scope->cells = cells;
-    scope->capacity = cap;
-    scope->prev = prev;
-
-    return scope;
-}
-
-TreeScopeTable *tree_alloc_scope(TreeParser *p, TreeScopeTable *prev) {
-    TreeScopeManager *m = &p->scopes;
+TreeScopeNode *tree_alloc_scope(TreeFunctionGraph *fn) {
+    TreeScopeManager *m = &fn->mscope;
     if (m->scopepool) {
         // pop off free list
-        TreeScopeTable *new_scope = m->scopepool;
+        TreeScopeNode *new_scope = m->scopepool;
         m->scopepool = new_scope->prev;
         // add prev scope
         new_scope->prev = prev;
@@ -47,25 +37,36 @@ TreeScopeTable *tree_alloc_scope(TreeParser *p, TreeScopeTable *prev) {
         mem_zero(new_scope->cells, sizeof(TreeScopeSymbolCell*) * new_scope->capacity);
         return new_scope;
     } else {
+        TreeScopeSymbolCell **cells = arena_push_array(fn->arena, TreeScopeSymbolCell*, m->default_cap);
+        scope->cells = cells;
+        scope->capacity = cap;
+        scope->prev = prev;
 
-        return tree_alloc_scope_with_cap(p, m->default_cap, prev);
+        return scope;
     }
 }
 
-TreeScopeTable *tree_alloc_scope_region(TreeParser *p, TreeScopeTable *prev, TreeNode *region) {
-    TreeScopeManager *m = &p->scopes;
-    TreeScopeTable *scope = tree_alloc_scope(p, prev);
-    // scope->region = region;
+TreeNode *tree_push_new_scope(TreeFunctionGraph *fn, TreeNode *ctrl, TreeNode *prev) {
+    TreeNode n = (TreeNode){
+        .kind = TreeNodeKind_SymbolTable,
+    }
 
-    return scope;
+    TreeScopeNode *s = tree_alloc_scope(fn);
+    n.vptr = (void*)s;
+
+    tree_node_alloc_inputs(fn, &n, (fn->mscope.default_cap * 2)/3);
+    
 }
 
-TreeScopeTable *tree_duplicate_scope(TreeParser *p, TreeScopeTable *original) {
-    TreeScopeManager *m = &p->scopes;
-    TreeScopeTable *dup_scope = tree_alloc_scope_with_cap(p, original->capacity, 0);
-    TreeScopeSymbolCell *cell = original->head;
+
+TreeNode *tree_duplicate_scope(TreeFunctionGraph *fn, TreeNode *original) {
+    TreeNode *dup_node = tree_push_new_scope(fn, original->inputs[0], 0);
+    TreeScopeNode *dup_scope = (TreeScopeNode*)dup_node->vptr;
+    
+    TreeScopeNode *original_scope = (TreeScopeNode*)original->vptr;
+    TreeScopeSymbolCell *cell = original_scope->head;
     while (cell) {
-        tree_scope_insert_symbol(p, dup_scope, cell->name, cell->node);
+        tree_scope_insert_symbol(p, dup, cell->name, original->inputs[cell->slot]);
         cell = cell->next;
     }
 
@@ -74,9 +75,10 @@ TreeScopeTable *tree_duplicate_scope(TreeParser *p, TreeScopeTable *original) {
     return dup_scope;
 }
 
-TreeScopeSymbolCell *tree_scope_symbol_cell_alloc(TreeParser *p) {
-    TreeScopeManager *m = &p->scopes;
+TreeScopeSymbolCell *tree_scope_symbol_cell_alloc(TreeFunctionGraph *fn) {
+    TreeScopeManager *m = &fn->mscope;
     if (m->cellpool) {
+        // TODO FOUND BIG BUG
         TreeScopeSymbolCell *cell =  m->cellpool;
         mem_zero_item(cell, TreeScopeSymbolCell);
         return cell;
@@ -88,15 +90,15 @@ TreeScopeSymbolCell *tree_scope_symbol_cell_alloc(TreeParser *p) {
 
 // TreeNode *tree_merge_scopes
 
-void tree_free_all_scopes(TreeParser *p, TreeScopeTable *s) {
-    TreeScopeManager *m = &p->scopes;
-    TreeScopeTable *prev = s->prev;
+void tree_free_all_scopes(TreeFunctionGraph *fn, TreeScopeNode *s) {
+    TreeScopeManager *m = &fn->mscope;
+    TreeScopeNode *prev = s->prev;
     if (prev) tree_free_all_scopes(p, prev);
     tree_free_single_scope(p, s);
 }
 
-void tree_free_single_scope(TreeParser *p, TreeScopeTable *s) {
-    TreeScopeManager *m = &p->scopes;
+void tree_free_single_scope(TreeFunctionGraph *fn, TreeScopeNode *s) {
+    TreeScopeManager *m = &fn->mscope;
     // take all the the symbols and push them onto the free list
     TreeScopeSymbolCell *cell = s->head;
     while (cell) {
@@ -117,7 +119,8 @@ void tree_free_single_scope(TreeParser *p, TreeScopeTable *s) {
 }
 
 
-TreeScopeSymbolCell *tree_scope_lookup_symbol_cell(TreeScopeTable *s, String name) {
+TreeScopeSymbolCell *tree_scope_lookup_symbol_cell(TreeNode *scope, String name) {
+    TreeScopeNode *s = (TreeScopeNode*)scope->vptr
     U64 slotidx = tree_symbol_hash(name) %s->capacity;
     TreeScopeSymbolCell **cell = &s->cells[slotidx];
     while (*cell) {
@@ -135,42 +138,41 @@ TreeScopeSymbolCell *tree_scope_lookup_symbol_cell(TreeScopeTable *s, String nam
 }
 
 
-TreeNode *tree_scope_lookup_symbol(TreeScopeTable *s, String name) {
-    TreeScopeSymbolCell *cell = tree_scope_lookup_symbol_cell(s, name);
+TreeNode *tree_scope_lookup_symbol(TreeNode *scope, String name) {
+    TreeScopeSymbolCell *cell = tree_scope_lookup_symbol_cell(scope, name);
 
-    return cell->node;
+    return scope->inputs[cell->slot];
 }
 
-B32 tree_scope_update_symbol(TreeScopeTable *s, String name, TreeNode *node) {
-    TreeScopeSymbolCell *cell = tree_scope_lookup_symbol_cell(s, name);
+B32 tree_scope_update_symbol(TreeNode *scope, String name, TreeNode *node) {
+    TreeScopeSymbolCell *cell = tree_scope_lookup_symbol_cell(scope, name);
     if (cell) {
-        cell->node = node;
+        scope->inputs[cell->slot] = node;
         return 1;
     } else {
         return 0;
     }
 }
 
-void tree_scope_insert_symbol(TreeParser *p, TreeScopeTable *s, String name, TreeNode *node) {
-    TreeScopeManager *m = &p->scopes;
+B32 tree_scope_insert_symbol(TreeFunctionGraph *fn, TreeNode *scope, String name, TreeNode *node) {
+    TreeScopeNode *s = (TreeScopeNode*)s->vptr;
 
     U64 slotidx = tree_symbol_hash(name) %s->capacity;
     TreeScopeSymbolCell **cell = &s->cells[slotidx];
     while (*cell) {
-        // if its already in the table update it.
-        if (string_cmp((*cell)->name, name) == 0) {
-            (*cell)->node = node;
-            return;
+        // if its already in the table do a error;
+        if (string_cmp((*cell)->name, name) == 0) {         
+            return 0;
         }
 
         cell = &(*cell)->hash_next;
     }
 
-    TreeScopeSymbolCell *new = arena_push(p->arena, TreeScopeSymbolCell);
+    TreeScopeSymbolCell *new = arena_push(fn->arena, TreeScopeSymbolCell);
 
     // contents
     new->name = name;
-    new->node = node;
+    new->slot = tree_node_append_input(fn, s, node);
 
     // chain interability
     if (s->tail) {
@@ -183,12 +185,16 @@ void tree_scope_insert_symbol(TreeParser *p, TreeScopeTable *s, String name, Tre
 
     *cell = new;
 
+    return 1;
 }
 
-TreeScopeTable *tree_merge_scopes(TreeFunctionGraph *fn, TreeNode *region, TreeScopeTable *this, TreeScopeTable *that) {
+TreeScopeNode *tree_merge_scopes(TreeFunctionGraph *fn, TreeNode *region, TreeNode *this, TreeNode *that) {
     assert(that);
 
-    TreeScopeSymbolCell *cell = this->head;
+    TreeScopeNode *this_scope = (TreeScopeNode*)this->vptr;
+    TreeScopeNode *that_scope = (TreeScopeNode*)that->vptr;
+
+    TreeScopeSymbolCell *cell = this_scope->head;
     while (cell) {
         TreeNode *this_node = cell->node;
         TreeNode *that_node = tree_scope_lookup_symbol(that, cell->name);
@@ -209,10 +215,4 @@ TreeScopeTable *tree_merge_scopes(TreeFunctionGraph *fn, TreeNode *region, TreeS
 
 
     return this;
-}
-
-TreeNode *tree_create_symbol_table(TreeFunctionGraph *fn) {
-    TreeNode n {
-        .kind = TreeNodeKind_SymbolTable,
-    };
 }

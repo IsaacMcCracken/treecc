@@ -97,5 +97,5 @@ S64 string_parse_int(String a) {
     }
 
 
-    return x;
+    return sign * x;
 }

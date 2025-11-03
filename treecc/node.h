@@ -75,6 +75,7 @@ struct TreeNode {
     TreeUser *users;
     union {
         S64 vint;
+        void *vptr;
     };
 };
 
@@ -92,15 +93,47 @@ struct TreeNodeMap {
     Arena *arena;
 };
 
+typedef struct TreeScopeSymbolCell TreeScopeSymbolCell;
+struct TreeScopeSymbolCell {
+    TreeScopeSymbolCell *hash_next; // next in hash buck
+    TreeScopeSymbolCell *next; // next symbol inserted (for iteration)
+    String name;
+    U16 slot;
+};
+
+typedef struct TreeScopeNode TreeScopeNode;
+struct TreeScopeNode {
+    TreeNode *prev; // previous scope / parent
+    TreeScopeSymbolCell **cells; // buckets for table lookup
+    U64 capacity; // capacity
+    TreeScopeSymbolCell *head; // first symbol (for iteration)
+    TreeScopeSymbolCell *tail; // last symbol (for appending)
+    U64 symbol_count;
+};
+
+
+typedef struct TreeScopeManager TreeScopeManager;
+struct TreeScopeManager {
+    TreeScopeSymbolCell *cellpool; // free list for cells
+    TreeScopeNode *scopepool; // free list for scopes
+    U64 default_cap; // capacity for new scopes
+};
+
 
 typedef struct TreeFunctionGraph TreeFunctionGraph;
 struct TreeFunctionGraph {
     Arena *arena;
+    Arena *tmp;
     U64 deadspace;
+    TreeScopeManager mscope;
+    TreeNode *scope;
     TreeNodeMap map;
     TreeNode *start;
     TreeNode *stop;
 };
+
+
+
 
 // temporary
 
@@ -113,7 +146,7 @@ U32 tree_hash_dbj2(Byte *data, U64 len);
 // Builder Functions
 TreeNode *tree_create_const_int(TreeFunctionGraph *fn, S64 v);
 TreeNode *tree_create_urnary_expr(TreeFunctionGraph *fn, TreeNodeKind kind, TreeNode *input);
-TreeNode *tree_create_binary_expr(TreeFunctionGraph *fn, TreeDataType kind, TreeNode *lhs, TreeNode *rhs);
+TreeNode *tree_create_binary_expr(TreeFunctionGraph *fn, TreeNodeKind kind, TreeNode *lhs, TreeNode *rhs);
 
 TreeNode *tree_create_return(TreeFunctionGraph *fn, TreeNode *prev_ctrl, TreeNode *expr);
 TreeNode *tree_create_proj(TreeFunctionGraph *fn, TreeNode *input, U16 v);
