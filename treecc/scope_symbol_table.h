@@ -1,7 +1,0 @@
-#ifndef TREE_SCOPE_SYMBOL_TABLE_H
-#define TREE_SCOPE_SYMBOL_TABLE_H
-
-
-
-
-#endif
