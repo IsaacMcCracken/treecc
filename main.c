@@ -29,7 +29,7 @@ TreeParser tree_parse(char *src) {
     };
 
     Arena *scope_arena = arena_init(1<<24);
-    TreeScopeManager scopes = tree_scope_manager_init(scope_arena, 101);
+    TreeScopeManager scopes = tree_scope_manager_init(101);
 
 
     TreeParser p = {

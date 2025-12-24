@@ -54,7 +54,7 @@ struct TreeParser {
     Byte *src;
     TreeToken *tokens;
     TreeScopeManager scopes;
-    TreeScopeTable *current_scope;
+    TreeNode *current_scope;
     TreeTypeMap types;
     U32 tokencount;
     U32 linenum;
