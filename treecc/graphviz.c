@@ -3,7 +3,10 @@
 char *tree_node_get_string_name(File *file, TreeNode *node, char *buf) {
     switch (node->kind) {
         case TreeNodeKind_Return:
-
+            return "return";
+        case TreeNodeKind_If:
+            return "if";
+        case TreeNodeKind_Const
     }
 }
 

@@ -47,7 +47,7 @@ typedef int64_t S64;
 
 #define KILOBYTE(X) (X) << 10
 #define MEGABYTE(X) (X) << 20
-#define GIGABYTE(X) (U64)(X) << 10
+#define GIGABYTE(X) (U64)(X) << 30
 
 #define U8_MAX 0xFF
 #define U16_MAX 0xFFFF
@@ -109,6 +109,8 @@ typedef struct {
     U64 id[1];
 } Thread;
 
+typedef void (*FnThreadEntry)(void *params);
+
 typedef struct {
     String fullpath; // probably allocated
     String name; // points to fullpath
@@ -134,8 +136,9 @@ enum {
     OSMemoryFlags_Exec = 0x4,
 };
 
-BufferBuilder builder_init(Arena *arena);
+S32 core_init(void);
 
+BufferBuilder builder_init(Arena *arena);
 String builder_to_string(BufferBuilder *bb);
 void builder_write_string(BufferBuilder *bb, String string);
 void builder_write_number(BufferBuilder *bb, U64 num, const U8 base);
@@ -175,6 +178,12 @@ S32 string_cmp(String a, String b);
 String string_alloc(Arena *arena, const char *str);
 String string_cpy(Arena *arena, String source);
 String string_concat(Arena *arena, int count, ...);
+
+//**************************************//
+//          Thread Functions            //
+//**************************************//
+
+Thread thread_launch(FnThreadEntry entry, void *params);
 
 #define str_lit(str) (String){ str, sizeof(str) - 1 }
 

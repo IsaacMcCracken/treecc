@@ -3,6 +3,80 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <pthread.h>
+
+typedef U8 PosixEntityKind;
+enum {
+    PosixEntityKind_Invalid,
+    PosixEntityKind_Mutex,
+    PosixEntityKind_RWMutex,
+    PosixEntityKind_Barrier,
+    PosixEntityKind_CondVar,
+    PosixEntityKind_Thread,
+};
+
+typedef struct PosixEntity PosixEntity;
+struct PosixEntity {
+    PosixEntity *next;
+    PosixEntityKind kind;
+    union {
+        pthread_mutex_t mutex;
+        pthread_rwlock_t rwmutex;
+        pthread_barrier_t barrier;
+        struct {
+            pthread_cond_t cond;
+            pthread_mutex_t mutex;
+        } cv;
+        struct {
+            pthread_t handle;
+            FnThreadEntry fn;
+            void *ptr;
+        } thread;
+    };
+};
+
+
+struct {
+    pthread_mutex_t entity_mutex;
+    Arena *entity_arena;
+    PosixEntity *free_entity;
+} os_posix_state = { 0 };
+
+PosixEntity *os_posix_entity_alloc(PosixEntityKind kind) {
+    PosixEntity *e = 0;
+    {
+        pthread_mutex_lock(&os_posix_state.entity_mutex);
+
+        if (os_posix_state.free_entity) {
+            e = os_posix_state.free_entity;
+            os_posix_state.free_entity = os_posix_state.free_entity->next;
+            mem_zero_item(e, PosixEntity);
+        } else {
+            e = arena_push(os_posix_state.entity_arena, PosixEntity);
+        }
+        pthread_mutex_unlock(&os_posix_state.entity_mutex);
+    }
+
+    e->kind = kind;
+    return e;
+}
+
+void os_posix_entity_free(PosixEntity *e) {
+    pthread_mutex_lock(&os_posix_state.entity_mutex);
+
+    e->next = os_posix_state.free_entity;
+    os_posix_state.free_entity = e;
+
+    pthread_mutex_unlock(&os_posix_state.entity_mutex);
+}
+
+
+S32 os_posix_core_lib_init(void) {
+    os_posix_state.entity_arena = arena_init(GIGABYTE(1));
+    if (os_posix_state.entity_arena == 0) return 0;
+
+    return 1;
+}
 
 int posix_memory_flags(OSMemoryFlags flags) {
     int out = 0;
@@ -69,4 +143,14 @@ Buffer os_read_entire_file(Arena *arena, String path) {
     }
     close(file);
     return (Buffer){ .str = buf, .len = file_size };
+}
+
+Thread os_thread_launch(FnThreadEntry fn, void *ptr) {
+    PosixEntity *e = os_posix_entity_alloc(PosixEntityKind_Thread);
+    e->thread.fn = fn;
+    e->thread.ptr = ptr;
+
+    // TODO launch thread
+    // int result = pthread_create(&e->thread.handle, 0, )
+    return (Thread){(U64)e};
 }

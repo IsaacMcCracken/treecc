@@ -4,3 +4,5 @@
 #include "mem.c"
 #include "builder.c"
 #include "time.c"
+#include "thread.c"
+#include "state.c"

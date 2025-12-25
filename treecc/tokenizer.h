@@ -39,7 +39,6 @@ enum {
   TreeTokenKind_Else,
   TreeTokenKind_While,
 
-
   TreeTokenKind_EOF,
   TreeTokenKind_COUNT,
 };
@@ -49,6 +48,7 @@ struct TreeToken {
   TreeTokenKind kind;
   U32 start, end;
 };
+
 
 
 extern char *tree_token_kind_strings[];
