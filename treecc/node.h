@@ -96,7 +96,7 @@ struct TreeNodeMap {
 typedef struct TreeScopeSymbolCell TreeScopeSymbolCell;
 struct TreeScopeSymbolCell {
     TreeScopeSymbolCell *hash_next; // next in hash buck
-    TreeScopeSymbolCell *next; // next symbol inserted (for iteration)
+    TreeScopeSymbolCell *next; // next symbol inserted (for iteration);
     String name;
     U16 slot;
 };
@@ -106,8 +106,8 @@ struct TreeScopeNode {
     TreeNode *prev; // previous scope / parent
     TreeScopeSymbolCell **cells; // buckets for table lookup
     U64 capacity; // capacity
-    TreeScopeSymbolCell *head; // first symbol (for iteration)
-    TreeScopeSymbolCell *tail; // last symbol (for appending)
+    TreeScopeSymbolCell *head; // first symbol (for iteration);
+    TreeScopeSymbolCell *tail; // last symbol (for appending);
     U64 symbol_count;
 };
 
@@ -143,13 +143,24 @@ void tree_node_print_expr_debug(TreeNode *expr);
 TreeNodeMap tree_map_init(Arena *arena, U64 map_cap);
 U32 tree_hash_dbj2(Byte *data, U64 len);
 
+//------------------------------------------//
 // Builder Functions
+//------------------------------------------//
+
+// scope functions
+TreeScopeManager tree_scope_manager_init(U64 default_cap);
+TreeNode *tree_push_new_scope(TreeFunctionGraph *fn, TreeNode *ctrl, TreeNode *prev);
+TreeNode *tree_duplicate_scope(TreeFunctionGraph *fn, TreeNode *original);
+
+// expression functions
 TreeNode *tree_create_const_int(TreeFunctionGraph *fn, S64 v);
 TreeNode *tree_create_urnary_expr(TreeFunctionGraph *fn, TreeNodeKind kind, TreeNode *input);
 TreeNode *tree_create_binary_expr(TreeFunctionGraph *fn, TreeNodeKind kind, TreeNode *lhs, TreeNode *rhs);
 
-TreeNode *tree_create_return(TreeFunctionGraph *fn, TreeNode *prev_ctrl, TreeNode *expr);
 TreeNode *tree_create_proj(TreeFunctionGraph *fn, TreeNode *input, U16 v);
+
+// control flow
+TreeNode *tree_create_return(TreeFunctionGraph *fn, TreeNode *prev_ctrl, TreeNode *expr);
 
 TreeNode *tree_create_if(TreeFunctionGraph *fn, TreeNode *prev_ctrl);
 TreeNode *tree_create_region_for_if(TreeFunctionGraph *fn, TreeNode *t, TreeNode *f, U16 output_reserves);

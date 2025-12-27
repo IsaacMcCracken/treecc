@@ -23,13 +23,13 @@ TreeParser tree_parse(char *src) {
         .cap = type_map_cap,
     };
 
+    TreeScopeManager scopes = tree_scope_manager_init(101);
     TreeFunctionGraph fn = (TreeFunctionGraph){
         .arena = arena,
         .map = tree_map_init(map_arena, 4093),
+        .mscope = scopes,
     };
 
-    Arena *scope_arena = arena_init(1<<24);
-    TreeScopeManager scopes = tree_scope_manager_init(scope_arena, 101);
 
 
     TreeParser p = {
@@ -39,11 +39,8 @@ TreeParser tree_parse(char *src) {
         .types = types,
         .src = (Byte*)src,
         .fn = fn,
-        .scopes = scopes,
     };
 
-    p.current_scope = tree_alloc_scope(&p, 0);
-    // create learning topics
 
 
     TreeDecl *decl = tree_parse_decl(&p);

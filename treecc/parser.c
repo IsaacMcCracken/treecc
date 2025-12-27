@@ -109,7 +109,7 @@ TreeNode *tree_parse_urnary(TreeParser *p) {
         }
         case TreeTokenKind_Identifier: {
             String name = tree_string_from_token(p, tok);
-            TreeNode *node = tree_scope_lookup_symbol(p->current_scope, name);
+            TreeNode *node = tree_scope_lookup_symbol(&p->fn.scope, name);
             return node;
         } break;
 
@@ -217,7 +217,7 @@ TreeNode *tree_parse_local_decl_stmt(TreeParser *p) {
             tree_advance_token(p);
             // TODO convert CType to TreeDataKind;
             TreeNode *expr = tree_parse_expr(p);
-            tree_scope_insert_symbol(p, p->current_scope, symbol_name, expr);
+            tree_scope_insert_symbol(p, &p->fn.scope, symbol_name, expr);
 
             return expr;
         } break;
@@ -271,8 +271,8 @@ TreeNode *tree_parse_stmt(TreeParser *p, TreeNode *prev_ctrl) {
             tree_advance_token(p);
             tok = tree_current_token(p);
 
-            TreeScopeTable *true_scope = p->current_scope;
-            TreeScopeTable *false_scope = tree_duplicate_scope(p, true_scope);
+            TreeNode *true_scope = &p->fn.scope;
+            TreeNode *false_scope = tree_duplicate_scope(p, true_scope);
 
             TreeNode *if_node = tree_create_if(&p->fn, prev_ctrl);
             TreeNode *true_node = tree_create_proj(&p->fn, if_node, 0);
@@ -284,7 +284,7 @@ TreeNode *tree_parse_stmt(TreeParser *p, TreeNode *prev_ctrl) {
                 TreeNode *stmt = tree_parse_stmt(p, prev_ctrl);
             }
 
-            p->current_scope = false_scope;
+            &p->fn.scope = false_scope;
 
             tok = tree_current_token(p);
             if (tok.kind == TreeTokenKind_Else) {
@@ -297,7 +297,7 @@ TreeNode *tree_parse_stmt(TreeParser *p, TreeNode *prev_ctrl) {
 
             TreeNode *region = tree_create_region_for_if(&p->fn, true_node, false_node, 4);
 
-            p->current_scope = tree_merge_scopes(&p->fn, region, true_scope, false_scope);
+            &p->fn.scope = tree_merge_scopes(&p->fn, region, true_scope, false_scope);
             tree_free_all_scopes(p, false_scope);
 
             return region;
@@ -337,7 +337,7 @@ TreeNode *tree_parse_stmt(TreeParser *p, TreeNode *prev_ctrl) {
                     String name = tree_string_from_token(p, tok);
                     tree_advance_token(p);
                     TreeNode *expr = tree_parse_expr(p);
-                    tree_scope_update_symbol(p->current_scope, name, expr);
+                    tree_scope_update_symbol(&p->fn.scope, name, expr);
                 }break;
 
                 // void function call i.e. " fn(args); "
@@ -387,7 +387,7 @@ TreeFunction tree_parse_function_proto(TreeParser *p, TreeType *returntype) {
 
         String name = tree_string_from_token(p, tok);
         TreeNode *node = tree_create_proj(&p->fn, p->fn.start, arg_count);
-        tree_scope_insert_symbol(p, p->current_scope, name, node);
+        tree_scope_insert_symbol(p, &p->fn.scope, name, node);
 
         TreeField *field = arena_push(p->arena, TreeField);
         field->type = t;
@@ -425,8 +425,8 @@ void tree_parse_scope(TreeParser *p, TreeNode *prev_ctrl) {
     tree_advance_token(p);
 
     // set up lower new scope
-    TreeScopeTable *new_scope = tree_alloc_scope(p, p->current_scope);
-    p->current_scope = new_scope;
+    TreeNode *new_scope = tree_push_new_scope(&p->fn, prev_ctrl, &p->fn.mscope.);
+    *(&p->fn.scope) = new_scope;
 
 
     TreeToken tok = tree_current_token(p);
@@ -437,9 +437,9 @@ void tree_parse_scope(TreeParser *p, TreeNode *prev_ctrl) {
     }
 
     // pop the scope
-    TreeScopeTable *prev = p->current_scope->prev;
-    tree_free_single_scope(p, p->current_scope);
-    p->current_scope = prev;
+    TreeNode *prev = &p->fn.scope->prev;
+    tree_free_single_scope(p, &p->fn.scope);
+    &p->fn.scope = prev;
 }
 
 TreeDecl *tree_parse_function_decl(TreeParser *p, String name, TreeType *returntype) {

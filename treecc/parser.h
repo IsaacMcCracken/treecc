@@ -4,7 +4,6 @@
 #include "tokenizer.h"
 #include "c_types.h"
 #include "node.h"
-#include "scope_symbol_table.h"
 
 typedef U16 TreeDeclKind;
 enum {
@@ -53,8 +52,6 @@ struct TreeParser {
     Arena *arena; // prolly remove this cuz I think the function is gonnna alloate the nodes
     Byte *src;
     TreeToken *tokens;
-    TreeScopeManager scopes;
-    TreeScopeTable *current_scope;
     TreeTypeMap types;
     U32 tokencount;
     U32 linenum;

@@ -27,10 +27,9 @@ TreeScopeNode *tree_alloc_scope(TreeFunctionGraph *fn) {
         // pop off free list
         TreeScopeNode *new_scope = m->scopepool;
         m->scopepool = new_scope->prev;
-        // add prev scope
-        new_scope->prev = prev;
         // capacity stays the same
         // zero everything else
+        new_scope->prev = 0;;
         new_scope->head = 0;
         new_scope->tail = 0;
         new_scope->symbol_count = 0;
