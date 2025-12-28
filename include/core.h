@@ -109,6 +109,28 @@ typedef struct {
     U64 id[1];
 } Thread;
 
+typedef struct {
+    U64 id[1];
+} Mutex;
+
+typedef struct {
+    U64 id[1];
+} RWMutex;
+
+typedef U8 RWMutexMode;
+enum {
+  RWMutexMode_Read = 0,
+  RWMutexMode_Write = 1,
+};
+
+typedef struct {
+    U64 id[1];
+} Barrier;
+
+typedef struct {
+    U64 id[1];
+} CondVar;
+
 typedef void (*FnThreadEntry)(void *params);
 
 typedef struct {
@@ -157,6 +179,23 @@ void os_decommit(void *ptr, U64 size);
 void os_release(void *ptr, U64 size);
 void os_protect(void *ptr, U64 size, OSMemoryFlags flags);
 Buffer os_read_entire_file(Arena *arena, String path);
+
+Thread os_thread_launch(FnThreadEntry fn, void *ptr);
+B32 os_thread_join(Thread thread);
+
+Mutex os_mutex_alloc(void);
+void os_mutex_free(Mutex m);
+void os_mutex_lock(Mutex m);
+void os_mutex_unlock(Mutex m);
+
+RWMutex os_rwmutex_alloc(void);
+void os_rwmutex_free(RWMutex m);
+void os_rwmutex_lock(RWMutex m, RWMutexMode mode);
+void os_rwmutex_unlock(RWMutex m)
+
+Barrier os_barrier_alloc(U64 count);
+void os_barrier_free(Barrier b);
+void os_barrier_wait(Barrier b);
 
 U64 mem_align_backward(U64 x, U64 align);
 U64 mem_align_forward(U64 x, U64 align);

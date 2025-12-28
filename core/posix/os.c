@@ -145,12 +145,154 @@ Buffer os_read_entire_file(Arena *arena, String path) {
     return (Buffer){ .str = buf, .len = file_size };
 }
 
+void *os_posix_thread_entry(void *ptr) {
+    PosixEntity *e = (PosixEntity*)ptr;
+    FnThreadEntry fn = e->thread.fn;
+    void *params = e->thread.ptr;
+    // TODO maybe add context system
+    fn(params);
+    return 0;
+}
+
 Thread os_thread_launch(FnThreadEntry fn, void *ptr) {
     PosixEntity *e = os_posix_entity_alloc(PosixEntityKind_Thread);
     e->thread.fn = fn;
     e->thread.ptr = ptr;
 
-    // TODO launch thread
-    // int result = pthread_create(&e->thread.handle, 0, )
+    int result = pthread_create(&e->thread.handle, 0, fn, ptr)
+    if (result == -1) {
+        os_posix_entity_free(e);
+        e = 0;
+    }
+
     return (Thread){(U64)e};
+}
+
+
+B32 os_thread_join(Thread thread, U64 endt_us) {
+    // TODO is_mem_zero(ptr, size)
+    if (!thread.id[0]) {
+        return 0;
+    }
+    PosixEntity *e = (PosixEntity*)thread.id[0];
+    int success = pthread_join(e->thread.handle);
+    B32 result = success == 0;
+    os_posix_entity_free(e);
+    return result;
+}
+
+Mutex os_mutex_alloc(void) {
+    PosixEntity *e = os_posix_entity_alloc(PosixEntityKind_Mutex);
+    int result = pthread_mutex_init(&e->mutex, 0);
+    if (result == -1) {
+        os_posix_entity_free(e);
+        e = 0;
+    }
+
+    return (Mutex){(U64)e};
+}
+
+void os_mutex_free(Mutex m) {
+    if (m.id[0] == 0) {
+        return;
+    }
+
+    PosixEntity *e = (PosixEntity*)m.id[0];
+    pthread_mutex_destroy(&e->mutex);
+    os_posix_entity_free(e);
+}
+
+void os_mutex_lock(Mutex m) {
+    if (m.id[0] == 0) return;
+    PosixEntity *e = (PosixEntity*)m.id[0];
+    pthread_mutex_lock(&e->mutex);
+}
+
+void os_mutex_unlock(Mutex m) {
+    if (m.id[0] == 0) return;
+    PosixEntity *e = (PosixEntity*)m.id[0];
+    pthread_mutex_unlock(&e->mutex);
+}
+
+RWMutex os_rwmutex_alloc(void) {
+    PosixEntity *e = os_posix_entity_alloc(PosixEntityKind_RWMutex);
+    int result = pthread_rwlock_init(&e->rwmutex, 0);
+    if (result == -1) {
+        os_posix_entity_free(e);
+        e = 0;
+    }
+    return (RWMutex){(U64)e};
+}
+
+void os_rwmutex_free(RWMutex m) {
+  if (m.id[0] == 0) { return; }
+  PosixEntity *e = (PosixEntity*)m.id[0];
+  pthread_rwlock_destroy(&e->rwmutex);
+  os_posix_entity_free(e);
+}
+
+void os_rwmutex_lock(RWMutex m, RWMutexMode mode) {
+    if (m.id[0] == 0) return;
+    PosixEntity *e = (PosixEntity*)m.id[0];
+    if (mode) {
+        pthread_rwlock_wrlock(&e->rwmutex);
+    } else {
+        pthread_rwlock_rdlock(&e->rwmutex);
+    }
+}
+
+
+void os_rwmutex_unlock(RWMutex m) {
+    if (m.id[0] == 0) return;
+    PosixEntity *e = (PosixEntity*)m.id[0];
+    pthread_rwlock_unlock(&e->rwmutex);
+}
+
+Barrier os_barrier_alloc(U64 count) {
+    PosixEntity *e = os_posix_entity_alloc(PosixEntityKind_Barrier);
+    pthread_barrier_init(&e->barrier, 0, count);
+    return (Barrier){(U64)e};
+}
+
+void os_barrier_free(Barrier b) {
+    if (b.id[0] == 0) return;
+    PosixEntity *e = (PosixEntity*)b.id[0];
+    pthread_barrier_destroy(&e->barrier);
+    os_posix_entity_free(e);
+}
+
+
+void os_barrier_wait(Barrier b) {
+    if (b.id[0] == 0) return;
+    PosixEntity *e = (PosixEntity*)b.id[0];
+    pthread_barrier_wait(&b->barrier);
+}
+
+ CondVar os_cond_var_alloc(void) {
+    PosixEntity *e = os_posix_entity_alloc(PosixEntityKind_CondVar);
+    int result = pthread_cond_init(&e->cv.cond, 0);
+    if (result == -1) {
+        os_posix_entity_free(e);
+        return (CondVar){ 0 };
+    }
+
+    result = pthread_mutex_init(&e->cv.mutex);
+    if (result == -1) {
+        pthread_cond_destroy(&e->cv.cond);
+        os_posix_entity_free(e);
+        e = 0;
+    }
+
+    return (CondVar){(U64)e}
+}
+
+void os_cond_var_free(CondVar cv) {
+    PosixEntity *e = (PosixEntity*)cv.id[0];
+    pthread_cond_destroy(&e->cv.cond);
+    pthread_mutex_destroy(&e->cv.mutex);
+    os_posix_entity_free(e);
+}
+
+void os_cond_var_wait(CondVar cv, Mutex m, U64 endt_us) {
+
 }
