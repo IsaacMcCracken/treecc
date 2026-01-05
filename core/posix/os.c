@@ -40,6 +40,7 @@ struct {
     pthread_mutex_t entity_mutex;
     Arena *entity_arena;
     PosixEntity *free_entity;
+    OSSystemInfo sys_info;
 } os_posix_state = { 0 };
 
 PosixEntity *os_posix_entity_alloc(PosixEntityKind kind) {
@@ -72,8 +73,15 @@ void os_posix_entity_free(PosixEntity *e) {
 
 
 S32 os_posix_core_lib_init(void) {
-    os_posix_state.entity_arena = arena_init(GIGABYTE(1));
+    os_posix_state.entity_arena = arena_init(MEGABYTE(64));
     if (os_posix_state.entity_arena == 0) return 0;
+
+    long cpu_count = sysconf(_SC_NPROCESSORS_ONLN);
+    if (cpu_count == -1) {
+        return 0;
+    }
+
+    os_posix_state.sys_info.cpu_count = (U32)cpu_count;
 
     return 1;
 }
@@ -149,9 +157,8 @@ void *os_posix_thread_entry(void *ptr) {
     PosixEntity *e = (PosixEntity*)ptr;
     FnThreadEntry fn = e->thread.fn;
     void *params = e->thread.ptr;
-    // TODO maybe add context system
-    fn(params);
-    return 0;
+    void *result = thread_entry_point(fn, params);
+    return result;
 }
 
 Thread os_thread_launch(FnThreadEntry fn, void *ptr) {
@@ -159,13 +166,20 @@ Thread os_thread_launch(FnThreadEntry fn, void *ptr) {
     e->thread.fn = fn;
     e->thread.ptr = ptr;
 
-    int result = pthread_create(&e->thread.handle, 0, fn, ptr)
+    int result = pthread_create(&e->thread.handle, 0, os_posix_thread_entry, e);
     if (result == -1) {
         os_posix_entity_free(e);
         e = 0;
     }
 
     return (Thread){(U64)e};
+}
+
+// TODO what the fuck does ryan mean by this
+void os_thread_detach(Thread t) {
+    if (t.id[0] == 0) return;
+    PosixEntity *e = (PosixEntity*)t.id[0];
+    os_posix_entity_free(e);
 }
 
 
@@ -175,7 +189,7 @@ B32 os_thread_join(Thread thread, U64 endt_us) {
         return 0;
     }
     PosixEntity *e = (PosixEntity*)thread.id[0];
-    int success = pthread_join(e->thread.handle);
+    int success = pthread_join(e->thread.handle, 0);
     B32 result = success == 0;
     os_posix_entity_free(e);
     return result;
@@ -265,7 +279,7 @@ void os_barrier_free(Barrier b) {
 void os_barrier_wait(Barrier b) {
     if (b.id[0] == 0) return;
     PosixEntity *e = (PosixEntity*)b.id[0];
-    pthread_barrier_wait(&b->barrier);
+    pthread_barrier_wait(&e->barrier);
 }
 
  CondVar os_cond_var_alloc(void) {
@@ -276,14 +290,14 @@ void os_barrier_wait(Barrier b) {
         return (CondVar){ 0 };
     }
 
-    result = pthread_mutex_init(&e->cv.mutex);
+    result = pthread_mutex_init(&e->cv.mutex, 0);
     if (result == -1) {
         pthread_cond_destroy(&e->cv.cond);
         os_posix_entity_free(e);
         e = 0;
     }
 
-    return (CondVar){(U64)e}
+    return (CondVar){(U64)e};
 }
 
 void os_cond_var_free(CondVar cv) {
@@ -295,4 +309,8 @@ void os_cond_var_free(CondVar cv) {
 
 void os_cond_var_wait(CondVar cv, Mutex m, U64 endt_us) {
 
+}
+
+OSSystemInfo os_get_system_info(void) {
+    return os_posix_state.sys_info;
 }

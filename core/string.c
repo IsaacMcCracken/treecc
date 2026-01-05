@@ -1,5 +1,12 @@
 #include <core.h>
 
+String cstring_to_string(char *str) {
+    return (String){
+        .str = str,
+        .len = (U64)strlen(str),
+    };
+}
+
 String string_alloc(Arena *arena, const char *str) {
     String string =
         (String){ .str = arena_push_array(arena, char, sizeof(str) - 1),

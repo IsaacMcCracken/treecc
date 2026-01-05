@@ -27,6 +27,12 @@
 #pragma warning(disable : 4477)
 #endif
 
+#ifdef CORE_MSVC
+#define thread_static __declspec(thread)
+#else
+#define thread_static __thread
+#endif
+
 typedef uint8_t Byte;
 typedef uintptr_t UIntPtr;
 
@@ -101,6 +107,7 @@ typedef struct {
     U64 len;
 } BufferBuilder;
 
+
 typedef struct {
     S64 nsec;
 } Time;
@@ -108,6 +115,11 @@ typedef struct {
 typedef struct {
     U64 id[1];
 } Thread;
+
+typedef struct {
+    Arena *arenas[2];
+} ThreadContext;
+
 
 typedef struct {
     U64 id[1];
@@ -131,7 +143,7 @@ typedef struct {
     U64 id[1];
 } CondVar;
 
-typedef void (*FnThreadEntry)(void *params);
+typedef void *(*FnThreadEntry)(void *params);
 
 typedef struct {
     String fullpath; // probably allocated
@@ -141,6 +153,10 @@ typedef struct {
 } FileInfo;
 
 typedef UIntPtr OSHandle;
+
+typedef struct {
+    U32 cpu_count;
+} OSSystemInfo;
 
 typedef U16 OSFileFlags;
 enum {
@@ -158,7 +174,10 @@ enum {
     OSMemoryFlags_Exec = 0x4,
 };
 
-S32 core_init(void);
+S32 entry_point(String *args, U64 arg_count);
+void *thread_entry_point(FnThreadEntry fn, void *params);
+
+// S32 core_init(void);
 
 BufferBuilder builder_init(Arena *arena);
 String builder_to_string(BufferBuilder *bb);
@@ -171,6 +190,9 @@ void builder_write_signed_dec(BufferBuilder *bb, S64 num);
 #define builder_write_bin(bb, num) builder_write_number(bb, num, 2)
 void builder_write_float(BufferBuilder *bb, float num, const U8 precision);
 
+
+
+OSSystemInfo os_get_system_info(void);
 OSHandle os_file_open(OSFileFlags flags, String path);
 void os_file_close(OSHandle file);
 void *os_reserve(U64 size);
@@ -180,9 +202,6 @@ void os_release(void *ptr, U64 size);
 void os_protect(void *ptr, U64 size, OSMemoryFlags flags);
 Buffer os_read_entire_file(Arena *arena, String path);
 
-Thread os_thread_launch(FnThreadEntry fn, void *ptr);
-B32 os_thread_join(Thread thread);
-
 Mutex os_mutex_alloc(void);
 void os_mutex_free(Mutex m);
 void os_mutex_lock(Mutex m);
@@ -191,7 +210,7 @@ void os_mutex_unlock(Mutex m);
 RWMutex os_rwmutex_alloc(void);
 void os_rwmutex_free(RWMutex m);
 void os_rwmutex_lock(RWMutex m, RWMutexMode mode);
-void os_rwmutex_unlock(RWMutex m)
+void os_rwmutex_unlock(RWMutex m);
 
 Barrier os_barrier_alloc(U64 count);
 void os_barrier_free(Barrier b);
@@ -213,18 +232,25 @@ void *pool_alloc(Pool *pool);
 
 S64 string_parse_int(String a);
 char *string_to_cstring(Arena *arena, String s);
+String cstring_to_string(char *str);
 S32 string_cmp(String a, String b);
 String string_alloc(Arena *arena, const char *str);
 String string_cpy(Arena *arena, String source);
 String string_concat(Arena *arena, int count, ...);
+#define str_lit(str) (String){ str, sizeof(str) - 1 }
 
 //**************************************//
 //          Thread Functions            //
 //**************************************//
 
-Thread thread_launch(FnThreadEntry entry, void *params);
+ThreadContext *thread_context_alloc(void);
+void thread_context_select(ThreadContext *ctx);
+void thread_context_free(ThreadContext *ctx);
+ThreadContext *thread_context_selected(void);
 
-#define str_lit(str) (String){ str, sizeof(str) - 1 }
+Thread os_thread_launch(FnThreadEntry fn, void *ptr);
+B32 os_thread_join(Thread thread, U64 endt_us);
+void os_thread_detach(Thread t);
 
 #define mem_set(s, c, n) memset(s, c, n)
 #define mem_zero(s, n) memset(s, 0, n)
@@ -244,5 +270,7 @@ Thread thread_launch(FnThreadEntry entry, void *params);
 #define arena_push(arena, T) (T *)arena_push_(arena, sizeof(T), mem_alignof(T))
 #define arena_push_array(arena, T, N) \
     (T *)arena_push_(arena, sizeof(T) * (N), mem_alignof(T))
+
+
 
 #endif // CORE_H

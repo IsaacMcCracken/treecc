@@ -1,10 +1,10 @@
 #ifndef CORE_INTERNAL_H
 #define CORE_INTERNAL_H
 
-Thread os_thread_launch(FnThreadEntry fn, void *ptr);
-B32 os_thread_join(Thread thread);
+#include <core.h>
 
-Mutex os_mutex_alloc(void);
-void os_mutex_free(Mutex m);
+typedef struct {
+    Arena *arenas[2];
+} ThreadContext;
 
 #endif
