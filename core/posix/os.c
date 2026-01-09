@@ -2,8 +2,11 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <pthread.h>
+#include <limits.h>
+
 
 typedef U8 PosixEntityKind;
 enum {
@@ -162,7 +165,7 @@ Buffer os_read_entire_file(Arena *arena, String path) {
         amt_read += read(file, buf + amt_read, file_size - amt_read);
     }
     close(file);
-    return (Buffer){ .str = buf, .len = file_size };
+    return (Buffer){ .ptr = (S8*)buf, .len = file_size };
 }
 
 void *os_posix_thread_entry(void *ptr) {
@@ -322,6 +325,68 @@ void os_cond_var_free(CondVar cv) {
 void os_cond_var_wait(CondVar cv, Mutex m, U64 endt_us) {
 
 }
+
+
+FileInfo os_get_file_info(Arena *arena, String path) {
+    FileInfo info = {0};
+
+    static thread_static char resolved[PATH_MAX];
+
+    TempArena temp = temp_arena_begin(arena);
+    char *cpath = string_to_cstring(arena, path);
+    // Resolve to absolute path
+    if (!realpath(cpath, resolved)) {
+        return info; // not found or invalid
+    }
+    temp_arena_end(temp);
+
+    struct stat st;
+    if (stat(resolved, &st) != 0) {
+        return info;
+    }
+
+    // Copy fullpath into arena
+    U64 len = (U64)strlen(resolved);
+    S8 *dst = arena_push_array(arena, S8, len + 1);
+    mem_cpy(dst, resolved, len + 1);
+
+    info.fullpath.ptr   = dst;
+    info.fullpath.len   = len;
+    info.size           = (U64)st.st_size;
+    info.is_dir         = S_ISDIR(st.st_mode);
+
+#if defined(__APPLE__)
+    info.modified.nsec = (U64)st.st_mtimespec.tv_sec * 1000000000ull +
+                    (U64)st.st_mtimespec.tv_nsec;
+#else
+    info.modified.nsec = (U64)st.st_mtim.tv_sec * 1000000000ull +
+                    (U64)st.st_mtim.tv_nsec;
+#endif
+
+    return info;
+}
+
+OSHandle os_file_open(OSFileFlags flags, String path) {
+    Temp scratch = scratch_begin(0, 0);
+
+    char *cpath = string_to_cstring(path);
+
+    int posix_flags = 0;
+
+    if (flags & OSFileFlag_Read && flags & OSFileFlag_Write) posix_flags |= O_RDWR;
+    else if (flags & OSFileFlag_Read) posix_flags |= O_RDONLY;
+    else if (flags & OSFileFlag_Write) posix_flags |= O_WRONLY;
+    if (flags & (OSFileFlag_Write | OSFileFlag_Append)) posix_flags |= O_CREAT;
+    if (flags & OSFileFlag_Create) posix_flags |= O_CREAT;
+    posix_flags |= O_CLOEXEC;
+    int fd = open(cpath, posix_flags, 0755); // find out what 0755 does?
+    scratch_end(scratch)
+
+    OSHandle h = fd;
+    if (fd == -1) h = 0;
+    return h;
+}
+
 
 OSSystemInfo os_get_system_info(void) {
     return os_posix_state.sys_info;

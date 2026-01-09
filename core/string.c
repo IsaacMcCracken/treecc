@@ -2,22 +2,22 @@
 
 String cstring_to_string(char *str) {
     return (String){
-        .str = str,
+        .ptr = (S8*)str,
         .len = (U64)strlen(str),
     };
 }
 
 String string_alloc(Arena *arena, const char *str) {
     String string =
-        (String){ .str = arena_push_array(arena, char, sizeof(str) - 1),
+        (String){ .ptr = arena_push_array(arena, S8, sizeof(str) - 1),
                   .len = sizeof(str) - 1 };
-    mem_cpy(string.str, str, sizeof(str) - 1);
+    mem_cpy(string.ptr, str, sizeof(str) - 1);
     return string;
 }
 String string_cpy(Arena *arena, String source) {
-    String string = (String){ .str = arena_push_array(arena, char, source.len),
+    String string = (String){ .ptr = arena_push_array(arena, S8, source.len),
                               .len = source.len };
-    mem_cpy(string.str, source.str, string.len);
+    mem_cpy(string.ptr, source.ptr, string.len);
     return string;
 }
 String string_concat(Arena *arena, int count, ...) {
@@ -31,14 +31,14 @@ String string_concat(Arena *arena, int count, ...) {
     va_end(args);
 
     String string =
-        (String){ .str = arena_push_array(arena, char, len), .len = len };
+        (String){ .ptr = arena_push_array(arena, S8, len), .len = len };
 
     U64 offset = 0;
     va_start(args, count);
 
     for (int i = 0; i < count; i++) {
         String arg = va_arg(args, String);
-        mem_cpy(&(string.str[offset]), arg.str, arg.len);
+        mem_cpy(&(string.ptr[offset]), arg.ptr, arg.len);
         offset += arg.len;
     }
 
@@ -48,7 +48,7 @@ String string_concat(Arena *arena, int count, ...) {
 
 char *string_to_cstring(Arena *arena, String s) {
     char *cstring = arena_push_array(arena, char, s.len + 1);
-    mem_cpy(cstring, s.str,
+    mem_cpy(cstring, s.ptr,
             s.len); // arena automatically pushes 0s so null terminated
     return cstring;
 }
@@ -56,9 +56,9 @@ char *string_to_cstring(Arena *arena, String s) {
 S32 string_cmp(String a, String b) {
     U64 len = (a.len < b.len) ? a.len : b.len;
     for (U64 i = 0; i < len; i++) {
-        if (a.str[i] > b.str[i])
+        if (a.ptr[i] > b.ptr[i])
             return 1;
-        else if (a.str[i] < b.str[i])
+        else if (a.ptr[i] < b.ptr[i])
             return -1;
     }
 
@@ -82,25 +82,25 @@ S64 string_parse_int(String a) {
 
     if (a.len == 0) return 0;
 
-    if (a.str[0] == '-') {
+    if (a.ptr[0] == '-') {
         sign = -1;
         i = 1;
     }
 
-    if (a.str[i] == '0' && ((i + 1) < a.len)) {
-        switch (a.str[i+1]) {
+    if (a.ptr[i] == '0' && ((i + 1) < a.len)) {
+        switch (a.ptr[i+1]) {
             case 'b': base = 2; break;
             case 'o': base = 8; break;
             case 'x': base = 16; break;
             default:
-                if (a.str[i + 1] < '0' && a.str[i + 1] > '9') return sign*x;
+                if (a.ptr[i + 1] < '0' && a.ptr[i + 1] > '9') return sign*x;
         }
     }
 
     for (; i < a.len; i++) {
         // check if we are parsing a number
-        if (a.str[i] < '0' && a.str[i] > '9') return sign * x;
-        x = x * base + (a.str[i] - '0');
+        if (a.ptr[i] < '0' && a.ptr[i] > '9') return sign * x;
+        x = x * base + (a.ptr[i] - '0');
     }
 
 

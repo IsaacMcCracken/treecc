@@ -11,7 +11,7 @@ struct BufferBuilder {
 - [ ] `void builder_write_float32(BufferBuilder *b, F32 x);`
 - [ ] `void builder_write_int(BufferBuilder *b, S32 x);`
 
-And other functions you find fitting. I think this will be a fun exercise, plus it will be useful for generating machine code. Yippee! :) 
+And other functions you find fitting. I think this will be a fun exercise, plus it will be useful for generating machine code. Yippee! :)
 */
 #include <core.h>
 
@@ -48,11 +48,11 @@ void builder_push_byte(BufferBuilder *bb, Byte b) {
     builder_push_bytes(B, (Byte *)type_ref, sizeof(T))
 
 String builder_to_string(BufferBuilder *bb) {
-    return (String){ .str = (char *)bb->base, .len = bb->len };
+    return (String){ .ptr = (S8 *)bb->base, .len = bb->len };
 }
 
 void builder_write_string(BufferBuilder *bb, String string) {
-   builder_push_bytes(bb, (Byte *)string.str, string.len);
+   builder_push_bytes(bb, (Byte *)string.ptr, string.len);
 }
 
 void builder_write_number(BufferBuilder *bb, U64 num, const U8 base) {
@@ -86,10 +86,10 @@ void builder_write_signed_dec(BufferBuilder *bb, S64 num) {
 void builder_write_float(BufferBuilder *bb, float num, const U8 precision) {
 /*
     if (isnan(num)) {
-        builder_write_string(bb, StrLit("NaN")); 
+        builder_write_string(bb, StrLit("NaN"));
         return;
     }else if (isinf(num)) {
-        builder_write_string(bb, StrLit("Inf")); 
+        builder_write_string(bb, StrLit("Inf"));
         return;
     }
 */
@@ -105,6 +105,6 @@ void builder_write_float(BufferBuilder *bb, float num, const U8 precision) {
     }
     builder_push_byte(bb, (Byte)'.');
     builder_write_unsigned_dec(bb, dec_part);
-    
+
 
 }

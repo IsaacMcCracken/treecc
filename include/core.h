@@ -128,11 +128,11 @@ typedef struct {
 } Pool;
 
 typedef struct {
-    char *str;
+    S8 *ptr;
     U64 len;
-} String;
+} Buffer;
 
-typedef String Buffer;
+typedef Buffer String;
 
 typedef struct HashEntry HashEntry;
 struct HashEntry {
@@ -215,6 +215,7 @@ typedef struct {
     String fullpath; // probably allocated
     String name; // points to fullpath
     U64 size;
+    Time modified;
     B32 is_dir;
 } FileInfo;
 
@@ -317,6 +318,9 @@ ThreadContext *thread_context_alloc(void);
 void thread_context_select(ThreadContext *ctx);
 void thread_context_free(ThreadContext *ctx);
 ThreadContext *thread_context_selected(void);
+Arena *thread_context_get_scratch(Arena **conflicts, U64 count);
+#define scratch_begin(conflicts, count) temp_arena_begin(thread_context_get_scratch((conflicts), (count)))
+#define scratch_end(scratch) temp_arena_end(scratch)
 
 Thread os_thread_launch(FnThreadEntry fn, void *ptr);
 B32 os_thread_join(Thread thread, U64 endt_us);
