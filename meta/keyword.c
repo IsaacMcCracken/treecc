@@ -10,10 +10,6 @@ char *keywords[] = {
     "if",
     "else",
     "while",
-<<<<<<< HEAD
-
-=======
->>>>>>> 621d45624b515c3dd09fd370390546071c03803e
 };
 
 char *keyword_enums[] = {
@@ -21,11 +17,8 @@ char *keyword_enums[] = {
   "TreeTokenKind_Int",
   "TreeTokenKind_If",
   "TreeTokenKind_Else",
-<<<<<<< HEAD
   "TreeTokenKind_While",
-=======
-  "TreeTokenKind_While"
->>>>>>> 621d45624b515c3dd09fd370390546071c03803e
+
 };
 
 U64 keyword_count() {
@@ -55,7 +48,7 @@ U32 tree_hash_string(String str) {
 void gen_keywords(void) {
     int mapsize = 53;
 
-    FILE *file = fopen("treecc/gen/keywords.c", "w");
+    FILE *file = fopen("src/front/gen/keywords.c", "w");
 
     printf("f: %p\n", file);
 

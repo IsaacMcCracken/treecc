@@ -1,19 +1,38 @@
 #include <core.h>
 
-Arena *arena_init(U64 cap) {
-    cap = mem_align_forward(cap, PAGE_SIZE);
+Arena *arena_init_(ArenaParams args) {
+    ArenaFlags flags = args.flags;
 
-    void *backing = os_reserve(cap);
+    U64 cmt_size = PAGE_SIZE;
+    if (flags & ArenaFlag_LargePage) cmt_size = LARGE_PAGE_SIZE;
+
+    U64 cap = mem_align_forward(args.cap, cmt_size);
+
+    // we get the large pages
+    void *backing = 0;
+    if (flags & ArenaFlag_LargePage) {
+        backing = os_reserve_large(cap);
+    } else {
+        backing = os_reserve(cap);
+    }
+
+
     Arena *arena = (Arena*)backing;
     if (!arena) return 0;
     // we gotta commit at least one page
+    if (flags & ArenaFlag_LargePage) {
+        os_commit_large(backing, cmt_size);
+    } else {
+        os_commit(backing, cmt_size);
+    }
 
-    os_commit(arena, PAGE_SIZE);
 
     *arena = (Arena){
         .pos = sizeof(Arena),
         .cmt = PAGE_SIZE,
         .cap = cap,
+        .flags = args.flags,
+        .curr = arena,
     };
 
     return arena;
@@ -33,17 +52,46 @@ void *arena_get_current(Arena *arena) {
 }
 
 void *arena_push_no_zero_(Arena *arena, U64 size, U64 align) {
-    U64 start = mem_align_forward(arena->pos, align);
+    // get the current arena
+    Arena *curr = arena->curr; // probably_self
+
+    U64 start = mem_align_forward(curr->pos, align);
     U64 end = start + size;
 
-    if (end > arena->cmt) {
-        U64 new_cmt = mem_align_forward(end, PAGE_SIZE);
-        os_commit((void*)arena, new_cmt);
-        arena->cmt = new_cmt;
+    if (end > curr->cap) {
+        if (arena->flags & ArenaFlag_Chainable) {
+            Arena *new = 0;
+            if (arena->free) {
+                new = arena->free;
+                arena->free = new->prev;
+            } else {
+                new = arena_init(DEFAULT_ARENA_SIZE);
+                new->prev = curr;
+            }
+            new->prev = curr;
+            curr = new;
+            arena->curr = curr;
+        } else {
+            // TODO: ERROR OUT OF MEMORY
+            return 0;
+        }
     }
 
-    char *result = ((char*)arena) + start;
-    arena->pos = end;
+    if (end > curr->cmt) {
+        U64 new_cmt = 0;
+        if (arena->flags & ArenaFlag_LargePage) {
+            new_cmt = mem_align_forward(end, LARGE_PAGE_SIZE);
+            os_commit_large((void*)curr, new_cmt);
+        } else {
+            new_cmt = mem_align_forward(end, PAGE_SIZE);
+            os_commit((void*)curr, new_cmt);
+        }
+        curr->cmt = new_cmt;
+    }
+
+
+    char *result = ((char*)curr) + start;
+    curr->pos = end;
     return result;
 }
 

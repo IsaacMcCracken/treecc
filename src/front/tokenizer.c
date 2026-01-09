@@ -1,7 +1,7 @@
 #include "tokenizer.h"
 #include "gen/keywords.c"
 
-char *tree_token_kind_strings[] = {
+char *token_kind_strings[] = {
     "(nil)",
     "Int",
     "Equals",
@@ -21,12 +21,12 @@ char *tree_token_kind_strings[] = {
     "EOF",
 };
 
-B32 tree_tokenizer_init(void) {
-    tree_init_token_maps();
+B32 tokenizer_init(void) {
+    init_token_maps();
     return 1;
 }
 
-U32 tree_hash_dbj2(Byte *data, U64 len) {
+U32 hash_dbj2(Byte *data, U64 len) {
     U32 hash = 5382;
     for (U32 i = 0; i < len; i++) {
         Byte c = data[i];
@@ -36,7 +36,7 @@ U32 tree_hash_dbj2(Byte *data, U64 len) {
     return hash;
 }
 
-U32 tree_hash_keyword(String str) {
+U32 hash_keyword(String str) {
     U32 hash = 0;
     switch (str.len) {
         case 0: assert(0);
@@ -55,25 +55,25 @@ U32 tree_hash_keyword(String str) {
     return hash;
 }
 
-B32 tree_is_identifier_begin_rune(U32 rune) {
+B32 is_identifier_begin_rune(U32 rune) {
     if (rune >= 'a' && rune <= 'z') return 1;
     if (rune >= 'A' && rune <= 'Z') return 1;
     if (rune == '_') return 1;
     return 0;
 }
 
-B32 tree_is_number_begin_rune(U32 rune) {
+B32 is_number_begin_rune(U32 rune) {
     if (rune >= '0' && rune <= '9') return 1;
     return 0;
 }
 
 
-B32 tree_is_number_rune(U32 rune) {
+B32 is_number_rune(U32 rune) {
     if (rune >= '0' && rune <= '9') return 1;
     return 0;
 }
 
-B32 tree_is_identifier_rune(U32 rune) {
+B32 is_identifier_rune(U32 rune) {
     if (rune >= 'a' && rune <= 'z') return 1;
     if (rune >= 'A' && rune <= 'Z') return 1;
     if (rune >= '0' && rune <= '9') return 1;
@@ -88,8 +88,8 @@ String string_from_source(Byte *src, U32 start, U32 end) {
     };
 }
 
-void tree_append_token(Arena *arena, TreeTokenKind kind, U32 start, U32 end, U32 *count) {
-    TreeToken *tok = arena_push(arena, TreeToken);
+void append_token(Arena *arena, TokenKind kind, U32 start, U32 end, U32 *count) {
+    Token *tok = arena_push(arena, Token);
     tok->kind = kind;
     tok->start = start;
     tok->end = end;
@@ -98,23 +98,23 @@ void tree_append_token(Arena *arena, TreeTokenKind kind, U32 start, U32 end, U32
     *count += 1;
 }
 
-void tree_append_keyword_or_identifier(Arena *arena, Byte *src, U32 start, U32 end, U32 *tokencount) {
+void append_keyword_or_identifier(Arena *arena, Byte *src, U32 start, U32 end, U32 *tokencount) {
 
 
     String tok_str = string_from_source(src, start, end);
-    U32 hash = tree_hash_keyword(tok_str);
+    U32 hash = hash_keyword(tok_str);
     U32 hashv = hash%KEYWORD_MAP_SIZE;
 
-    TreeTokenKind kind = keyword_map[hashv];
-    if (string_cmp(tok_str, keywords[kind]) != 0) kind = TreeTokenKind_Invalid;
-    if (kind == TreeTokenKind_Invalid) kind = TreeTokenKind_Identifier;
+    TokenKind kind = keyword_map[hashv];
+    if (string_cmp(tok_str, keywords[kind]) != 0) kind = TokenKind_Invalid;
+    if (kind == TokenKind_Invalid) kind = TokenKind_Identifier;
 
-    tree_append_token(arena, kind, start, end, tokencount);
+    append_token(arena, kind, start, end, tokencount);
 }
 
 
 
-TreeToken *tree_tokenize(
+Token *tokenize(
     Arena *arena,
     U32 *tokencount,
     Byte *src,
@@ -123,66 +123,66 @@ TreeToken *tree_tokenize(
     U32 count = 0;
     U32 curr = 0, prev = 0;
 
-    TreeToken *tokens = arena_get_current(arena);
+    Token *tokens = arena_get_current(arena);
     while (curr < srclen) {
         prev = curr;
         Byte ch = src[curr];
-        if (tree_is_identifier_begin_rune(ch)) {
-            while (tree_is_identifier_rune(ch)) {
+        if (is_identifier_begin_rune(ch)) {
+            while (is_identifier_rune(ch)) {
                 curr += 1;
                 ch = src[curr];
             }
 
-            tree_append_keyword_or_identifier(arena, src, prev, curr, &count);
-        } else if (tree_is_number_begin_rune(ch)) {
+            append_keyword_or_identifier(arena, src, prev, curr, &count);
+        } else if (is_number_begin_rune(ch)) {
 
-            while (tree_is_number_rune(ch)) {
+            while (is_number_rune(ch)) {
                 curr += 1;
                 ch = src[curr];
                 // putchar(ch);
             }
 
-            tree_append_token(arena, TreeTokenKind_Int_Lit, prev, curr, &count);
+            append_token(arena, TokenKind_Int_Lit, prev, curr, &count);
         } else {
             curr += 1;
             switch (ch) {
                 case '(':
-                    tree_append_token(arena, TreeTokenKind_LParen, prev, curr, &count);
+                    append_token(arena, TokenKind_LParen, prev, curr, &count);
                     break;
                 case ')':
-                    tree_append_token(arena, TreeTokenKind_RParen, prev, curr, &count);
+                    append_token(arena, TokenKind_RParen, prev, curr, &count);
                     break;
                 case '{':
-                    tree_append_token(arena, TreeTokenKind_LBrace, prev, curr, &count);
+                    append_token(arena, TokenKind_LBrace, prev, curr, &count);
                     break;
                 case '}':
-                    tree_append_token(arena, TreeTokenKind_RBrace, prev, curr, &count);
+                    append_token(arena, TokenKind_RBrace, prev, curr, &count);
                     break;
                 case '+':
-                    tree_append_token(arena, TreeTokenKind_Plus, prev, curr, &count);
+                    append_token(arena, TokenKind_Plus, prev, curr, &count);
                     break;
                 case '-':
-                    tree_append_token(arena, TreeTokenKind_Minus, prev, curr, &count);
+                    append_token(arena, TokenKind_Minus, prev, curr, &count);
                     break;
                 case '*':
-                    tree_append_token(arena, TreeTokenKind_Star, prev, curr, &count);
+                    append_token(arena, TokenKind_Star, prev, curr, &count);
                     break;
                 case '/':
-                    tree_append_token(arena, TreeTokenKind_Slash, prev, curr, &count);
+                    append_token(arena, TokenKind_Slash, prev, curr, &count);
                     break;
                 case ';':
-                    tree_append_token(arena, TreeTokenKind_SemiColon, prev, curr, &count);
+                    append_token(arena, TokenKind_SemiColon, prev, curr, &count);
                     break;
                 case ',':
-                    tree_append_token(arena, TreeTokenKind_Comma, prev, curr, &count);
+                    append_token(arena, TokenKind_Comma, prev, curr, &count);
                     break;
                 case '=': {
                     // TODO bound check
                     if (src[curr] == '=') {
                         curr += 1;
-                        tree_append_token(arena, TreeTokenKind_LogicEqual, prev, curr, &count);
+                        append_token(arena, TokenKind_LogicEqual, prev, curr, &count);
                     } else {
-                        tree_append_token(arena, TreeTokenKind_Equals, prev, curr, &count);
+                        append_token(arena, TokenKind_Equals, prev, curr, &count);
                     }
 
                 } break;
@@ -191,9 +191,9 @@ TreeToken *tree_tokenize(
                     // TODO bound check
                     if (src[curr] == '=') {
                         curr += 1;
-                        tree_append_token(arena, TreeTokenKind_LogicNotEqual, prev, curr, &count);
+                        append_token(arena, TokenKind_LogicNotEqual, prev, curr, &count);
                     } else {
-                        tree_append_token(arena, TreeTokenKind_LogicNot, prev, curr, &count);
+                        append_token(arena, TokenKind_LogicNot, prev, curr, &count);
                     }
 
                 } break;
@@ -202,9 +202,9 @@ TreeToken *tree_tokenize(
                     // TODO bound check
                     if (src[curr] == '=') {
                         curr += 1;
-                        tree_append_token(arena, TreeTokenKind_LogicGreaterEqual, prev, curr, &count);
+                        append_token(arena, TokenKind_LogicGreaterEqual, prev, curr, &count);
                     } else {
-                        tree_append_token(arena, TreeTokenKind_LogicGreaterThan, prev, curr, &count);
+                        append_token(arena, TokenKind_LogicGreaterThan, prev, curr, &count);
                     }
 
                 } break;
@@ -213,9 +213,9 @@ TreeToken *tree_tokenize(
                     // TODO bound check
                     if (src[curr] == '=') {
                         curr += 1;
-                        tree_append_token(arena, TreeTokenKind_LogicLesserEqual, prev, curr, &count);
+                        append_token(arena, TokenKind_LogicLesserEqual, prev, curr, &count);
                     } else {
-                        tree_append_token(arena, TreeTokenKind_LogicLesserThan, prev, curr, &count);
+                        append_token(arena, TokenKind_LogicLesserThan, prev, curr, &count);
                     }
 
                 } break;
@@ -227,9 +227,9 @@ TreeToken *tree_tokenize(
     return tokens;
 }
 
-void print_tokens(TreeToken *tokens, U32 count, Byte *src) {
+void print_tokens(Token *tokens, U32 count, Byte *src) {
     for (U32 i = 0; i < count; i++) {
-        TreeToken tok = tokens[i];
+        Token tok = tokens[i];
         String str = string_from_source(src, tok.start, tok.end);
         printf("'%.*s' = %d\n", (int)str.len, str.str, tok.kind);
     }

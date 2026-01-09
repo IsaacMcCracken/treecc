@@ -29,8 +29,23 @@
 
 #ifdef CORE_MSVC
 #define thread_static __declspec(thread)
+
+// TODO check computer archetecture
+// TODO add atomics for MSVC
+#include <intrin.h>
 #else
 #define thread_static __thread
+#  define atomic_u64_eval(x)                 __atomic_load_n(x, __ATOMIC_SEQ_CST)
+#  define atomic_u64_inc_eval(x)             (__atomic_fetch_add((volatile U64 *)(x), 1, __ATOMIC_SEQ_CST) + 1)
+#  define atomic_u64_dec_eval(x)             (__atomic_fetch_sub((volatile U64 *)(x), 1, __ATOMIC_SEQ_CST) - 1)
+#  define atomic_u64_eval_assign(x,c)        __atomic_exchange_n(x, c, __ATOMIC_SEQ_CST)
+#  define atomic_u64_add_eval(x,c)           (__atomic_fetch_add((volatile U64 *)(x), c, __ATOMIC_SEQ_CST) + (c))
+#  define atomic_u64_eval_cond_assign(x,k,c) ({ U64 _new = (c); __atomic_compare_exchange_n((volatile U64 *)(x),&_new,(k),0,__ATOMIC_SEQ_CST,__ATOMIC_SEQ_CST); _new; })
+#  define atomic_u32_eval(x)                 __atomic_load_n(x, __ATOMIC_SEQ_CST)
+#  define atomic_u32_inc_eval(x)             (__atomic_fetch_add((volatile U32 *)(x), 1, __ATOMIC_SEQ_CST) + 1)
+#  define atomic_u32_add_eval(x,c)           (__atomic_fetch_add((volatile U32 *)(x), c, __ATOMIC_SEQ_CST) + (c))
+#  define atomic_u32_eval_assign(x,c)        __atomic_exchange_n(x, c, __ATOMIC_SEQ_CST)
+#  define atomic_u32_eval_cond_assign(x,k,c) ({ U32 _new = (c); __atomic_compare_exchange_n((volatile U32 *)(x),&_new,(k),0,__ATOMIC_SEQ_CST,__ATOMIC_SEQ_CST); _new; })
 #endif
 
 typedef uint8_t Byte;
@@ -75,12 +90,30 @@ typedef int64_t S64;
 #define TIME_SECOND         1000000000LL
 #define TIME_MINUTE         60000000000LL
 
+#define DEFAULT_ARENA_SIZE MEGABYTE(64)
+
+typedef U8 ArenaFlags;
+enum {
+    ArenaFlag_Chainable = (1<<0),
+    ArenaFlag_LargePage = (1<<1),
+};
+
 typedef struct {
+    U64 cap;
+    ArenaFlags flags;
+} ArenaParams;
+
+typedef struct Arena Arena;
+struct Arena {
     U64 pos;
     U64 cmt;
     U64 cap;
-    U64 _un;
-} Arena;
+    Arena *prev;
+    Arena *curr;
+    Arena *free;
+    ArenaFlags flags;
+    U64 _reserved;
+};
 
 typedef struct {
     U64 pos;
@@ -101,6 +134,22 @@ typedef struct {
 
 typedef String Buffer;
 
+typedef struct HashEntry HashEntry;
+struct HashEntry {
+    HashEntry *prev;
+};
+
+typedef U64 *(*FnHash)(void *data, U64 size);
+
+typedef struct {
+    Arena *arena;
+    void **buf;
+    U64 cap;
+    U64 entry_count;
+    U64 entry_size;
+    FnHash *hash;
+} HashMap;
+
 typedef struct {
     Arena *arena;
     Byte *base;
@@ -120,6 +169,23 @@ typedef struct {
     Arena *arenas[2];
 } ThreadContext;
 
+typedef struct ThreadPoolWorker ThreadPoolWorker;
+struct ThreadPoolWorker {
+    ThreadPoolWorker *next;
+    Thread thread;
+};
+
+typedef struct {
+    ThreadPoolWorker *head;
+    ThreadPoolWorker *tail;
+    U64 count;
+} ThreadPoolWorkerList;
+
+typedef struct {
+    Arena *arena; // allocation for the pool
+    ThreadPoolWorkerList workers;
+    ThreadPoolWorker *free_list;
+} ThreadPool;
 
 typedef struct {
     U64 id[1];
@@ -160,18 +226,18 @@ typedef struct {
 
 typedef U16 OSFileFlags;
 enum {
-    OSFileFlag_Read,
-    OSFileFlag_Write,
-    OSFileFlag_Append,
-    OSFileFlag_Create,
+    OSFileFlag_Read     = 0x1,
+    OSFileFlag_Write    = 0x2,
+    OSFileFlag_Append   = 0x4,
+    OSFileFlag_Create   = 0x8,
     // maybe more
 };
 
 typedef U8 OSMemoryFlags;
 enum {
-    OSMemoryFlags_Read = 0x1,
+    OSMemoryFlags_Read  = 0x1,
     OSMemoryFlags_Write = 0x2,
-    OSMemoryFlags_Exec = 0x4,
+    OSMemoryFlags_Exec  = 0x4,
 };
 
 S32 entry_point(String *args, U64 arg_count);
@@ -196,7 +262,9 @@ OSSystemInfo os_get_system_info(void);
 OSHandle os_file_open(OSFileFlags flags, String path);
 void os_file_close(OSHandle file);
 void *os_reserve(U64 size);
+void *os_reserve_large(U64 size);
 B32 os_commit(void *ptr, U64 size);
+B32 os_commit_large(void *ptr, U64 size);
 void os_decommit(void *ptr, U64 size);
 void os_release(void *ptr, U64 size);
 void os_protect(void *ptr, U64 size, OSMemoryFlags flags);
@@ -219,7 +287,9 @@ void os_barrier_wait(Barrier b);
 U64 mem_align_backward(U64 x, U64 align);
 U64 mem_align_forward(U64 x, U64 align);
 
-Arena *arena_init(U64 init);
+
+Arena *arena_init_(ArenaParams args);
+#define arena_init(...) arena_init_((ArenaParams){__VA_ARGS__})
 void arena_clear(Arena *arena);
 void *arena_push_(Arena *arena, U64 size, U64 align);
 void *arena_get_current(Arena *arena);
@@ -238,7 +308,7 @@ String string_alloc(Arena *arena, const char *str);
 String string_cpy(Arena *arena, String source);
 String string_concat(Arena *arena, int count, ...);
 #define str_lit(str) (String){ str, sizeof(str) - 1 }
-
+#define str_arg(x) (int)((x).len), ((x).str)
 //**************************************//
 //          Thread Functions            //
 //**************************************//
@@ -271,6 +341,9 @@ void os_thread_detach(Thread t);
 #define arena_push_array(arena, T, N) \
     (T *)arena_push_(arena, sizeof(T) * (N), mem_alignof(T))
 
+
+HashMap *hashmap_init_(FnHash hash, U64 cap, U64 entry_size);
+#define hashmap_init(value, hash, cap) hashmap_init_(hash, cap, mem_align_forward(sizeof(value) + sizeof(HashEntry), mem_alignof(HashEntry)))
 
 
 #endif // CORE_H

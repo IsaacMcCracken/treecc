@@ -110,7 +110,19 @@ void *os_reserve(U64 size) {
     return result;
 }
 
+void *os_reserve_large(U64 size) {
+    void *result = mmap(0, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, -1, 0);
+    if (result == MAP_FAILED)
+        return 0;
+    return result;
+}
+
 B32 os_commit(void *ptr, U64 size) {
+    mprotect(ptr, size, PROT_READ | PROT_WRITE);
+    return 1;
+}
+
+B32 os_commit_large(void *ptr, U64 size) {
     mprotect(ptr, size, PROT_READ | PROT_WRITE);
     return 1;
 }
