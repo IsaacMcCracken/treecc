@@ -2,7 +2,7 @@
 #include "parser.h"
 
 
-U64 tree_symbol_hash(String s) {
+U64 string_hash(String s) {
     U64 hash = 1469598103934665603ull;
     for (U64 i = 0; i < s.len; i++) {
         hash ^= (Byte)s.str[i];
@@ -118,7 +118,7 @@ void tree_free_single_scope(TreeParser *p, TreeScopeTable *s) {
 
 
 TreeScopeSymbolCell *tree_scope_lookup_symbol_cell(TreeScopeTable *s, String name) {
-    U64 slotidx = tree_symbol_hash(name) %s->capacity;
+    U64 slotidx = string_hash(name) %s->capacity;
     TreeScopeSymbolCell **cell = &s->cells[slotidx];
     while (*cell) {
         // if its already in the table update it.
@@ -154,7 +154,7 @@ B32 tree_scope_update_symbol(TreeScopeTable *s, String name, TreeNode *node) {
 void tree_scope_insert_symbol(TreeParser *p, TreeScopeTable *s, String name, TreeNode *node) {
     TreeScopeManager *m = &p->scopes;
 
-    U64 slotidx = tree_symbol_hash(name) %s->capacity;
+    U64 slotidx = string_hash(name) %s->capacity;
     TreeScopeSymbolCell **cell = &s->cells[slotidx];
     while (*cell) {
         // if its already in the table update it.

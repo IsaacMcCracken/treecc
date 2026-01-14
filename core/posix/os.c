@@ -367,9 +367,9 @@ FileInfo os_get_file_info(Arena *arena, String path) {
 }
 
 OSHandle os_file_open(OSFileFlags flags, String path) {
-    Temp scratch = scratch_begin(0, 0);
+    TempArena scratch = scratch_begin(0, 0);
 
-    char *cpath = string_to_cstring(path);
+    char *cpath = string_to_cstring(scratch.arena, path);
 
     int posix_flags = 0;
 
@@ -380,13 +380,20 @@ OSHandle os_file_open(OSFileFlags flags, String path) {
     if (flags & OSFileFlag_Create) posix_flags |= O_CREAT;
     posix_flags |= O_CLOEXEC;
     int fd = open(cpath, posix_flags, 0755); // find out what 0755 does?
-    scratch_end(scratch)
+    scratch_end(scratch);
 
     OSHandle h = fd;
     if (fd == -1) h = 0;
     return h;
 }
 
+void os_file_close(OSHandle file) {
+    if (file == 0) return;
+    int fd = (int)file;
+    close(fd);
+}
+
+// U64 os_file_read(OSHandle file,)
 
 OSSystemInfo os_get_system_info(void) {
     return os_posix_state.sys_info;

@@ -10,3 +10,9 @@ HashMap *hashmap_init_(FnHash hash, U64 cap, U64 entry_size) {
     map->buf = arena_push_array(arena, void*, cap);
     return map;
 }
+
+void hashmap_deinit(HashMap *map) {
+    arena_deinit(map->arena);
+}
+
+void *hash_map_lookup(HashMap *map, )

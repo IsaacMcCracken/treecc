@@ -7,6 +7,17 @@ String cstring_to_string(char *str) {
     };
 }
 
+U64 string_hash(String s) {
+    U64 hash = 1469598103934665603ull;
+    for (U64 i = 0; i < s.len; i++) {
+        hash ^= (Byte)s.str[i];
+        hash *= 1099511628211ull;
+    }
+
+    return hash;
+}
+
+
 String string_alloc(Arena *arena, const char *str) {
     String string =
         (String){ .ptr = arena_push_array(arena, S8, sizeof(str) - 1),

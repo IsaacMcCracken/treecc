@@ -136,14 +136,15 @@ typedef Buffer String;
 
 typedef struct HashEntry HashEntry;
 struct HashEntry {
-    HashEntry *prev;
+    HashEntry *next_hash;
+    HashEntry *next_iter;
 };
 
 typedef U64 *(*FnHash)(void *data, U64 size);
 
 typedef struct {
     Arena *arena;
-    void **buf;
+    HashEntry **buf;
     U64 cap;
     U64 entry_count;
     U64 entry_size;
@@ -223,6 +224,7 @@ typedef UIntPtr OSHandle;
 
 typedef struct {
     U32 cpu_count;
+
 } OSSystemInfo;
 
 typedef U16 OSFileFlags;
@@ -301,6 +303,7 @@ void temp_arena_end(TempArena temp);
 Pool pool_init(Arena *arena, U64 chunk_align, U64 chunk_size);
 void *pool_alloc(Pool *pool);
 
+U64 string_hash(String s);
 S64 string_parse_int(String a);
 char *string_to_cstring(Arena *arena, String s);
 String cstring_to_string(char *str);
@@ -309,7 +312,7 @@ String string_alloc(Arena *arena, const char *str);
 String string_cpy(Arena *arena, String source);
 String string_concat(Arena *arena, int count, ...);
 #define str_lit(str) (String){ str, sizeof(str) - 1 }
-#define str_arg(x) (int)((x).len), ((x).str)
+#define str_arg(str) (int)str.len, str.ptr
 //**************************************//
 //          Thread Functions            //
 //**************************************//

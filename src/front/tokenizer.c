@@ -55,6 +55,11 @@ U32 hash_keyword(String str) {
     return hash;
 }
 
+B32 is_whitespace_rune(U32 rune) {
+    if (rune == ' ' || rune == '\n' || rune == '\t' || rune == '\r') return 1;
+    return 0;
+}
+
 B32 is_identifier_begin_rune(U32 rune) {
     if (rune >= 'a' && rune <= 'z') return 1;
     if (rune >= 'A' && rune <= 'Z') return 1;
@@ -113,6 +118,113 @@ void append_keyword_or_identifier(Arena *arena, Byte *src, U32 start, U32 end, U
 }
 
 
+Token token_lex(String src, U32 *cursor) {
+    U32 curr = *cursor;
+
+    S8 ch = src.ptr[curr];
+
+    // skip whitespace
+    while (is_whitespace_rune(ch) curr += 1;
+    U32 prev = curr;
+    if (is_identifier_begin_rune(ch)) {
+        while (is_identifier_rune(ch)) {
+            curr += 1;
+            ch = src[curr];
+        }
+
+        append_keyword_or_identifier(arena, src, prev, curr, &count);
+    } else if (is_number_begin_rune(ch)) {
+
+        while (is_number_rune(ch)) {
+            curr += 1;
+            ch = src[curr];
+            // putchar(ch);
+        }
+
+        append_token(arena, TokenKind_Int_Lit, prev, curr, &count);
+    } else {
+        curr += 1;
+        switch (ch) {
+            case '(':
+                append_token(arena, TokenKind_LParen, prev, curr, &count);
+                break;
+            case ')':
+                append_token(arena, TokenKind_RParen, prev, curr, &count);
+                break;
+            case '{':
+                append_token(arena, TokenKind_LBrace, prev, curr, &count);
+                break;
+            case '}':
+                append_token(arena, TokenKind_RBrace, prev, curr, &count);
+                break;
+            case '+':
+                append_token(arena, TokenKind_Plus, prev, curr, &count);
+                break;
+            case '-':
+                append_token(arena, TokenKind_Minus, prev, curr, &count);
+                break;
+            case '*':
+                append_token(arena, TokenKind_Star, prev, curr, &count);
+                break;
+            case '/':
+                append_token(arena, TokenKind_Slash, prev, curr, &count);
+                break;
+            case ';':
+                append_token(arena, TokenKind_SemiColon, prev, curr, &count);
+                break;
+            case ',':
+                append_token(arena, TokenKind_Comma, prev, curr, &count);
+                break;
+            case '=': {
+                // TODO bound check
+                if (src[curr] == '=') {
+                    curr += 1;
+                    append_token(arena, TokenKind_LogicEqual, prev, curr, &count);
+                } else {
+                    append_token(arena, TokenKind_Equals, prev, curr, &count);
+                }
+
+            } break;
+
+            case '!': {
+                // TODO bound check
+                if (src[curr] == '=') {
+                    curr += 1;
+                    append_token(arena, TokenKind_LogicNotEqual, prev, curr, &count);
+                } else {
+                    append_token(arena, TokenKind_LogicNot, prev, curr, &count);
+                }
+
+            } break;
+
+            case '>': {
+                // TODO bound check
+                if (src[curr] == '=') {
+                    curr += 1;
+                    append_token(arena, TokenKind_LogicGreaterEqual, prev, curr, &count);
+                } else {
+                    append_token(arena, TokenKind_LogicGreaterThan, prev, curr, &count);
+                }
+
+            } break;
+
+            case '<': {
+                // TODO bound check
+                if (src[curr] == '=') {
+                    curr += 1;
+                    append_token(arena, TokenKind_LogicLesserEqual, prev, curr, &count);
+                } else {
+                    append_token(arena, TokenKind_LogicLesserThan, prev, curr, &count);
+                }
+
+            } break;
+        }
+    }
+}
+
+
+
+}
 
 Token *tokenize(
     Arena *arena,
