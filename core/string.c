@@ -2,7 +2,7 @@
 
 String cstring_to_string(char *str) {
     return (String){
-        .ptr = (S8*)str,
+        .ptr = str,
         .len = (U64)strlen(str),
     };
 }
@@ -10,7 +10,7 @@ String cstring_to_string(char *str) {
 U64 string_hash(String s) {
     U64 hash = 1469598103934665603ull;
     for (U64 i = 0; i < s.len; i++) {
-        hash ^= (Byte)s.str[i];
+        hash ^= (Byte)s.ptr[i];
         hash *= 1099511628211ull;
     }
 
@@ -20,13 +20,13 @@ U64 string_hash(String s) {
 
 String string_alloc(Arena *arena, const char *str) {
     String string =
-        (String){ .ptr = arena_push_array(arena, S8, sizeof(str) - 1),
+        (String){ .ptr = arena_push_array(arena, char, sizeof(str) - 1),
                   .len = sizeof(str) - 1 };
     mem_cpy(string.ptr, str, sizeof(str) - 1);
     return string;
 }
 String string_cpy(Arena *arena, String source) {
-    String string = (String){ .ptr = arena_push_array(arena, S8, source.len),
+    String string = (String){ .ptr = arena_push_array(arena, char, source.len),
                               .len = source.len };
     mem_cpy(string.ptr, source.ptr, string.len);
     return string;
@@ -42,7 +42,7 @@ String string_concat(Arena *arena, int count, ...) {
     va_end(args);
 
     String string =
-        (String){ .ptr = arena_push_array(arena, S8, len), .len = len };
+        (String){ .ptr = arena_push_array(arena, char, len), .len = len };
 
     U64 offset = 0;
     va_start(args, count);

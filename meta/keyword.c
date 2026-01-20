@@ -5,6 +5,7 @@
 
 
 char *keywords[] = {
+    "fn",
     "return",
     "int",
     "if",
@@ -13,11 +14,12 @@ char *keywords[] = {
 };
 
 char *keyword_enums[] = {
-  "TreeTokenKind_Return",
-  "TreeTokenKind_Int",
-  "TreeTokenKind_If",
-  "TreeTokenKind_Else",
-  "TreeTokenKind_While",
+    "TokenKind_Fn",
+    "TokenKind_Return",
+    "TokenKind_Int",
+    "TokenKind_If",
+    "TokenKind_Else",
+    "TokenKind_While",
 
 };
 
@@ -31,15 +33,15 @@ U32 tree_hash_string(String str) {
         case 0: assert(0);
         case 1: case 2: case 3:
             for (U32 i = 0; i < str.len; i++) {
-                hash = (hash << 8) | str.str[i];
+                hash = (hash << 8) | str.ptr[i];
             }
             return hash;
     }
 
-    hash |= (U32)str.str[0] << 24;
-    hash |= (U32)str.str[1] << 16;
-    hash |= (U32)str.str[str.len - 2] << 8;
-    hash |= (U32)str.str[str.len - 1];
+    hash |= (U32)str.ptr[0] << 24;
+    hash |= (U32)str.ptr[1] << 16;
+    hash |= (U32)str.ptr[str.len - 2] << 8;
+    hash |= (U32)str.ptr[str.len - 1];
 
     return hash;
 }

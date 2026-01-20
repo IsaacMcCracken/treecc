@@ -24,7 +24,7 @@ U64 custom_pow10(U8 exp){
 }
 
 BufferBuilder builder_init(Arena *arena) {
-    Byte *base = arena_get_current(arena);
+    char *base = arena_get_current(arena);
     return (BufferBuilder){
         .arena = arena,
         .base = base,
@@ -48,7 +48,7 @@ void builder_push_byte(BufferBuilder *bb, Byte b) {
     builder_push_bytes(B, (Byte *)type_ref, sizeof(T))
 
 String builder_to_string(BufferBuilder *bb) {
-    return (String){ .ptr = (S8 *)bb->base, .len = bb->len };
+    return (String){ .ptr = bb->base, .len = bb->len };
 }
 
 void builder_write_string(BufferBuilder *bb, String string) {

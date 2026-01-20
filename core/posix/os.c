@@ -165,7 +165,7 @@ Buffer os_read_entire_file(Arena *arena, String path) {
         amt_read += read(file, buf + amt_read, file_size - amt_read);
     }
     close(file);
-    return (Buffer){ .ptr = (S8*)buf, .len = file_size };
+    return (Buffer){ .ptr = buf, .len = file_size };
 }
 
 void *os_posix_thread_entry(void *ptr) {
@@ -347,7 +347,7 @@ FileInfo os_get_file_info(Arena *arena, String path) {
 
     // Copy fullpath into arena
     U64 len = (U64)strlen(resolved);
-    S8 *dst = arena_push_array(arena, S8, len + 1);
+    char *dst = arena_push_array(arena, char, len + 1);
     mem_cpy(dst, resolved, len + 1);
 
     info.fullpath.ptr   = dst;

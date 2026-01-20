@@ -68,7 +68,7 @@ typedef int64_t S64;
 
 #define KILOBYTE(X) (X) << 10
 #define MEGABYTE(X) (X) << 20
-#define GIGABYTE(X) (U64)(X) << 30
+#define GIGABYTE(X) ((U64)(X)) << 30ULL
 
 #define U8_MAX 0xFF
 #define U16_MAX 0xFFFF
@@ -94,8 +94,8 @@ typedef int64_t S64;
 
 typedef U8 ArenaFlags;
 enum {
-    ArenaFlag_Chainable = (1<<0),
-    ArenaFlag_LargePage = (1<<1),
+    ArenaFlag_Chainable = 0x1,
+    ArenaFlag_LargePage = 0x2,
 };
 
 typedef struct {
@@ -128,7 +128,7 @@ typedef struct {
 } Pool;
 
 typedef struct {
-    S8 *ptr;
+    char *ptr;
     U64 len;
 } Buffer;
 
@@ -153,7 +153,7 @@ typedef struct {
 
 typedef struct {
     Arena *arena;
-    Byte *base;
+    char *base;
     U64 len;
 } BufferBuilder;
 
@@ -313,6 +313,7 @@ String string_cpy(Arena *arena, String source);
 String string_concat(Arena *arena, int count, ...);
 #define str_lit(str) (String){ str, sizeof(str) - 1 }
 #define str_arg(str) (int)str.len, str.ptr
+
 //**************************************//
 //          Thread Functions            //
 //**************************************//
