@@ -2,7 +2,7 @@
 #define KEYWORD_MAP_SIZE 53
 
 String keywords[64] = {0};
-TreeTokenKind keyword_map[53] = {0};
+TokenKind keyword_map[53] = {0};
 
 
 void tree_init_token_maps(void) {
@@ -19,4 +19,3 @@ void tree_init_token_maps(void) {
     keyword_map[11] = TokenKind_Else;
     keyword_map[37] = TokenKind_While;
 }
-

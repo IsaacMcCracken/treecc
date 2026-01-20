@@ -1,6 +1,6 @@
 #ifndef TREE_NODE_H
 #define TREE_NODE_H
-#include <core.h>
+#include <base/base_inc.h>
 
 typedef U8 SeaDataKind;
 enum {

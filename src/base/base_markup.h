@@ -9,7 +9,7 @@
 #if OS_LINUX
 # define RADDBG_MARKUP_STUBS
 #endif
-#include "lib_raddbg_markup/raddbg_markup.h"
+// #include "lib_raddbg_markup/raddbg_markup.h"
 
 #if !defined(LAYER_COLOR)
 # define LAYER_COLOR 0x404040ff

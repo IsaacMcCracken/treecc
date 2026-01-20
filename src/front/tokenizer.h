@@ -1,7 +1,7 @@
 #ifndef _TOKENIZER
 #define _TOKENIZER
 
-#include <core.h>
+#include <base/base_inc.h>
 
 typedef U32 TokenKind;
 enum {

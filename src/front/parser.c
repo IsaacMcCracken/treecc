@@ -71,4 +71,3 @@ void parse_decl(Parser *p) {
         } break;
     }
 }
-l
