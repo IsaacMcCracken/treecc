@@ -39,6 +39,8 @@ enum {
   TokenKind_Else,
   TokenKind_While,
 
+  TokenKind_Fn,
+
   TokenKind_EOF,
   TokenKind_COUNT,
 };

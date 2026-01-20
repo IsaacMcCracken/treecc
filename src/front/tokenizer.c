@@ -26,6 +26,8 @@ B32 tokenizer_init(void) {
     return 1;
 }
 
+
+
 U32 hash_dbj2(Byte *data, U64 len) {
     U32 hash = 5382;
     for (U32 i = 0; i < len; i++) {
@@ -42,15 +44,15 @@ U32 hash_keyword(String str) {
         case 0: assert(0);
         case 1: case 2: case 3:
             for (U32 i = 0; i < str.len; i++) {
-                hash = (hash << 8) | str.str[i];
+                hash = (hash << 8) | str.ptr[i];
             }
             return hash;
     }
 
-    hash |= (U32)str.str[0] << 24;
-    hash |= (U32)str.str[1] << 16;
-    hash |= (U32)str.str[str.len - 2] << 8;
-    hash |= (U32)str.str[str.len - 1];
+    hash |= (U32)str.ptr[0] << 24;
+    hash |= (U32)str.ptr[1] << 16;
+    hash |= (U32)str.ptr[str.len - 2] << 8;
+    hash |= (U32)str.ptr[str.len - 1];
 
     return hash;
 }
@@ -117,114 +119,115 @@ void append_keyword_or_identifier(Arena *arena, Byte *src, U32 start, U32 end, U
     append_token(arena, kind, start, end, tokencount);
 }
 
+// Token token_keyword_or_identifier(String src, U32 start, U32 end) {
 
-Token token_lex(String src, U32 *cursor) {
-    U32 curr = *cursor;
+// }
 
-    S8 ch = src.ptr[curr];
+// Token token_lex(String src, U32 *cursor) {
+//     U32 curr = *cursor;
 
-    // skip whitespace
-    while (is_whitespace_rune(ch) curr += 1;
-    U32 prev = curr;
-    if (is_identifier_begin_rune(ch)) {
-        while (is_identifier_rune(ch)) {
-            curr += 1;
-            ch = src[curr];
-        }
+//     S8 ch = src.ptr[curr];
 
-        append_keyword_or_identifier(arena, src, prev, curr, &count);
-    } else if (is_number_begin_rune(ch)) {
+//     // skip whitespace
+//     while (is_whitespace_rune(ch) curr += 1;
+//     U32 prev = curr;
 
-        while (is_number_rune(ch)) {
-            curr += 1;
-            ch = src[curr];
-            // putchar(ch);
-        }
+//     if (is_identifier_begin_rune(ch)) {
+//         while (is_identifier_rune(ch)) {
+//             curr += 1;
+//             ch = src[curr];
+//         }
 
-        append_token(arena, TokenKind_Int_Lit, prev, curr, &count);
-    } else {
-        curr += 1;
-        switch (ch) {
-            case '(':
-                append_token(arena, TokenKind_LParen, prev, curr, &count);
-                break;
-            case ')':
-                append_token(arena, TokenKind_RParen, prev, curr, &count);
-                break;
-            case '{':
-                append_token(arena, TokenKind_LBrace, prev, curr, &count);
-                break;
-            case '}':
-                append_token(arena, TokenKind_RBrace, prev, curr, &count);
-                break;
-            case '+':
-                append_token(arena, TokenKind_Plus, prev, curr, &count);
-                break;
-            case '-':
-                append_token(arena, TokenKind_Minus, prev, curr, &count);
-                break;
-            case '*':
-                append_token(arena, TokenKind_Star, prev, curr, &count);
-                break;
-            case '/':
-                append_token(arena, TokenKind_Slash, prev, curr, &count);
-                break;
-            case ';':
-                append_token(arena, TokenKind_SemiColon, prev, curr, &count);
-                break;
-            case ',':
-                append_token(arena, TokenKind_Comma, prev, curr, &count);
-                break;
-            case '=': {
-                // TODO bound check
-                if (src[curr] == '=') {
-                    curr += 1;
-                    append_token(arena, TokenKind_LogicEqual, prev, curr, &count);
-                } else {
-                    append_token(arena, TokenKind_Equals, prev, curr, &count);
-                }
+//         append_keyword_or_identifier(arena, src, prev, curr, &count);
+//     } else if (is_number_begin_rune(ch)) {
 
-            } break;
+//         while (is_number_rune(ch)) {
+//             curr += 1;
+//             ch = src[curr];
+//             // putchar(ch);
+//         }
 
-            case '!': {
-                // TODO bound check
-                if (src[curr] == '=') {
-                    curr += 1;
-                    append_token(arena, TokenKind_LogicNotEqual, prev, curr, &count);
-                } else {
-                    append_token(arena, TokenKind_LogicNot, prev, curr, &count);
-                }
+//         append_token(arena, TokenKind_Int_Lit, prev, curr, &count);
+//     } else {
+//         curr += 1;
+//         switch (ch) {
+//             case '(':
+//                 append_token(arena, TokenKind_LParen, prev, curr, &count);
+//                 break;
+//             case ')':
+//                 append_token(arena, TokenKind_RParen, prev, curr, &count);
+//                 break;
+//             case '{':
+//                 append_token(arena, TokenKind_LBrace, prev, curr, &count);
+//                 break;
+//             case '}':
+//                 append_token(arena, TokenKind_RBrace, prev, curr, &count);
+//                 break;
+//             case '+':
+//                 append_token(arena, TokenKind_Plus, prev, curr, &count);
+//                 break;
+//             case '-':
+//                 append_token(arena, TokenKind_Minus, prev, curr, &count);
+//                 break;
+//             case '*':
+//                 append_token(arena, TokenKind_Star, prev, curr, &count);
+//                 break;
+//             case '/':
+//                 append_token(arena, TokenKind_Slash, prev, curr, &count);
+//                 break;
+//             case ';':
+//                 append_token(arena, TokenKind_SemiColon, prev, curr, &count);
+//                 break;
+//             case ',':
+//                 append_token(arena, TokenKind_Comma, prev, curr, &count);
+//                 break;
+//             case '=': {
+//                 // TODO bound check
+//                 if (src[curr] == '=') {
+//                     curr += 1;
+//                     append_token(arena, TokenKind_LogicEqual, prev, curr, &count);
+//                 } else {
+//                     append_token(arena, TokenKind_Equals, prev, curr, &count);
+//                 }
 
-            } break;
+//             } break;
 
-            case '>': {
-                // TODO bound check
-                if (src[curr] == '=') {
-                    curr += 1;
-                    append_token(arena, TokenKind_LogicGreaterEqual, prev, curr, &count);
-                } else {
-                    append_token(arena, TokenKind_LogicGreaterThan, prev, curr, &count);
-                }
+//             case '!': {
+//                 // TODO bound check
+//                 if (src[curr] == '=') {
+//                     curr += 1;
+//                     append_token(arena, TokenKind_LogicNotEqual, prev, curr, &count);
+//                 } else {
+//                     append_token(arena, TokenKind_LogicNot, prev, curr, &count);
+//                 }
 
-            } break;
+//             } break;
 
-            case '<': {
-                // TODO bound check
-                if (src[curr] == '=') {
-                    curr += 1;
-                    append_token(arena, TokenKind_LogicLesserEqual, prev, curr, &count);
-                } else {
-                    append_token(arena, TokenKind_LogicLesserThan, prev, curr, &count);
-                }
+//             case '>': {
+//                 // TODO bound check
+//                 if (src[curr] == '=') {
+//                     curr += 1;
+//                     append_token(arena, TokenKind_LogicGreaterEqual, prev, curr, &count);
+//                 } else {
+//                     append_token(arena, TokenKind_LogicGreaterThan, prev, curr, &count);
+//                 }
 
-            } break;
-        }
-    }
-}
+//             } break;
 
+//             case '<': {
+//                 // TODO bound check
+//                 if (src[curr] == '=') {
+//                     curr += 1;
+//                     append_token(arena, TokenKind_LogicLesserEqual, prev, curr, &count);
+//                 } else {
+//                     append_token(arena, TokenKind_LogicLesserThan, prev, curr, &count);
+//                 }
 
-
-}
+//             } break;
+//         }
+//     }
+// }
+// }
 
 Token *tokenize(
     Arena *arena,
@@ -343,6 +346,6 @@ void print_tokens(Token *tokens, U32 count, Byte *src) {
     for (U32 i = 0; i < count; i++) {
         Token tok = tokens[i];
         String str = string_from_source(src, tok.start, tok.end);
-        printf("'%.*s' = %d\n", (int)str.len, str.str, tok.kind);
+        printf("'%.*s' = %d\n", (int)str.len, str.ptr, tok.kind);
     }
 }

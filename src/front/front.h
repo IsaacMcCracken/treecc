@@ -2,55 +2,22 @@
 #define TREE_FRONT_H
 
 #include <core.h>
+#include <sea/sea.h>
 #include "tokenizer.h"
-
-typedef struct SymbolMap SymbolMap;
-struct SymbolMap {
-
-};
-
-typedef struct SrcFile SrcFile;
-struct SrcFile {
-    String name;
-    String text;
-    Token *tokens;
-    U32 tok_count;
-};
-
-typedef struct SrcNode SrcNode;
-struct SrcNode {
-    SrcNode *prev;
-    SrcFile *file;
-    U32 curr;
-};
 
 typedef struct Parser Parser;
 struct Parser {
     Arena *arena;
-    SrcNode *src;
-};
-
-typedef struct SrcHashEntry SrcHashEntry;
-struct SrcHashEntry {
-    SrcHashEntry *next;
-    SrcHashEntry *next_hash;
-    SrcFile file;
-};
-
-typedef struct SrcFiles SrcFiles;
-struct SrcFiles {
-    Arena *arena;
-    RWMutex lock;
-    SrcHashEntry **lookup;
-    U64 entry_cap;
-    U64 file_count;
-    SrcHashEntry *head;
-    SrcHashEntry *tail;
+    String filename;
+    String src;
+    Token *tokens;
+    U32 tok_count;
+    U32 curr;
 };
 
 
+Parser parser_begin(String filename);
+Token current_token(Parser *p);
 
-void frontend_init(void);
-void add_src_file(String filename);
-SrcFiles *get_src_files(void);
+SeaDataType *parse_type(Parser *p);
 #endif // TREE_FRONT_H
