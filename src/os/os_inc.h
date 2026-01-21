@@ -4,6 +4,8 @@
 #ifndef OS_INC_H
 #define OS_INC_H
 
+#include <base/base_inc.h>
+
 #if !defined(OS_FEATURE_GRAPHICAL)
 # define OS_FEATURE_GRAPHICAL 0
 #endif

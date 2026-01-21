@@ -1,5 +1,5 @@
 #include <front/front.h>
-
+#include <os/os_inc.h>
 
 typedef struct {
     int _res;

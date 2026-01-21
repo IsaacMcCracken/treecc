@@ -1,4 +1,5 @@
 #include "tokenizer.h"
+#include <assert.h>
 #include "gen/keywords.c"
 
 char *token_kind_strings[] = {
@@ -28,31 +29,22 @@ B32 tokenizer_init(void) {
 
 
 
-U32 hash_dbj2(Byte *data, U64 len) {
-    U32 hash = 5382;
-    for (U32 i = 0; i < len; i++) {
-        Byte c = data[i];
-        hash = ((hash<<5) + hash) + c;
-    }
 
-    return hash;
-}
-
-U32 hash_keyword(String str) {
+U32 hash_keyword(String8 str) {
     U32 hash = 0;
-    switch (str.len) {
+    switch (str.size) {
         case 0: assert(0);
         case 1: case 2: case 3:
-            for (U32 i = 0; i < str.len; i++) {
-                hash = (hash << 8) | str.ptr[i];
+            for (U32 i = 0; i < str.size; i++) {
+                hash = (hash << 8) | str.str[i];
             }
             return hash;
     }
 
-    hash |= (U32)str.ptr[0] << 24;
-    hash |= (U32)str.ptr[1] << 16;
-    hash |= (U32)str.ptr[str.len - 2] << 8;
-    hash |= (U32)str.ptr[str.len - 1];
+    hash |= (U32)str.str[0] << 24;
+    hash |= (U32)str.str[1] << 16;
+    hash |= (U32)str.str[str.size - 2] << 8;
+    hash |= (U32)str.str[str.size - 1];
 
     return hash;
 }
@@ -88,15 +80,15 @@ B32 is_identifier_rune(U32 rune) {
     return 0;
 }
 
-String string_from_source(Byte *src, U32 start, U32 end) {
-    return (String){
-        (char*)src + start,
-        end - start
+String8 string_from_source(String8 src, U32 start, U32 end) {
+    return (String8){
+        (U8*)src.str + start,
+        Min(src.size, end - start)
     };
 }
 
 void append_token(Arena *arena, TokenKind kind, U32 start, U32 end, U32 *count) {
-    Token *tok = arena_push(arena, Token);
+    Token *tok = push_item(arena, Token);
     tok->kind = kind;
     tok->start = start;
     tok->end = end;
@@ -105,28 +97,30 @@ void append_token(Arena *arena, TokenKind kind, U32 start, U32 end, U32 *count) 
     *count += 1;
 }
 
-void append_keyword_or_identifier(Arena *arena, Byte *src, U32 start, U32 end, U32 *tokencount) {
+void append_keyword_or_identifier(Arena *arena, String8 src, U32 start, U32 end, U32 *tokencount) {
 
 
-    String tok_str = string_from_source(src, start, end);
+    String8 tok_str = string_from_source(src, start, end);
     U32 hash = hash_keyword(tok_str);
     U32 hashv = hash%KEYWORD_MAP_SIZE;
 
     TokenKind kind = keyword_map[hashv];
-    if (string_cmp(tok_str, keywords[kind]) != 0) kind = TokenKind_Invalid;
+    if (str8_match(tok_str, keywords[kind], 0)) kind = TokenKind_Invalid;
     if (kind == TokenKind_Invalid) kind = TokenKind_Identifier;
 
     append_token(arena, kind, start, end, tokencount);
+
+
 }
 
-// Token token_keyword_or_identifier(String src, U32 start, U32 end) {
+// Token token_keyword_or_identifier(String8 src, U32 start, U32 end) {
 
 // }
 
-// Token token_lex(String src, U32 *cursor) {
+// Token token_lex(String8 src, U32 *cursor) {
 //     U32 curr = *cursor;
 
-//     S8 ch = src.ptr[curr];
+//     S8 ch = src.str[curr];
 
 //     // skip whitespace
 //     while (is_whitespace_rune(ch) curr += 1;
@@ -218,9 +212,9 @@ void append_keyword_or_identifier(Arena *arena, Byte *src, U32 start, U32 end, U
 //                 // TODO bound check
 //                 if (src[curr] == '=') {
 //                     curr += 1;
-//                     append_token(arena, TokenKind_LogicLesserEqual, prev, curr, &count);
+//                     append_tokearena, TokenKind_LogicLesserEqual prev, cu , &cou);
 //                 } else {
-//                     append_token(arena, TokenKind_LogicLesserThan, prev, curr, &count);
+//                     append_tokearena, TokenKind_LogicLesserThan prev, cu , &cou);
 //                 }
 
 //             } break;
@@ -229,26 +223,25 @@ void append_keyword_or_identifier(Arena *arena, Byte *src, U32 start, U32 end, U
 // }
 // }
 
-Token *tokenize(
-    Arena *arena,
-    U32 *tokencount,
-    Byte *src,
-    U32 srclen
-) {
+Token *tokenize(Arena *arena, U32 *tokencount, String8 src_string) {
+
+
+    char *src = src_string.str;
+    U64 srclen = src_string.size;
     U32 count = 0;
     U32 curr = 0, prev = 0;
 
-    Token *tokens = arena_get_current(arena);
+    Token *tokens = arena_push(arena, 0, 1, 0);
     while (curr < srclen) {
         prev = curr;
-        Byte ch = src[curr];
+        U8 ch = src[curr];
         if (is_identifier_begin_rune(ch)) {
             while (is_identifier_rune(ch)) {
                 curr += 1;
                 ch = src[curr];
             }
 
-            append_keyword_or_identifier(arena, src, prev, curr, &count);
+            append_keyword_or_identifier(arena, src_string, prev, curr, &count);
         } else if (is_number_begin_rune(ch)) {
 
             while (is_number_rune(ch)) {
@@ -342,10 +335,10 @@ Token *tokenize(
     return tokens;
 }
 
-void print_tokens(Token *tokens, U32 count, Byte *src) {
-    for (U32 i = 0; i < count; i++) {
-        Token tok = tokens[i];
-        String str = string_from_source(src, tok.start, tok.end);
-        printf("'%.*s' = %d\n", (int)str.len, str.ptr, tok.kind);
-    }
-}
+// void print_tokens(Token *tokens, U32 count, Byte *src) {
+//     for (U32 i = 0; i < count; i++) {
+//         Token tok = tokens[i];
+//         String8 str = string_from_source(src, tok.start, tok.end);
+//         printf("'%.*s' = %d\n", (int)str.size, str.str, tok.kind);
+//     }
+// }

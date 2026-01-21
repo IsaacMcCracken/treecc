@@ -22,7 +22,7 @@ arena_alloc_(ArenaParams *params)
     reserve_size = AlignPow2(reserve_size, os_get_system_info()->page_size);
     commit_size  = AlignPow2(commit_size,  os_get_system_info()->page_size);
   }
-  
+
   // rjf: reserve/commit initial block
   void *base = params->optional_backing_buffer;
   if(base == 0)
@@ -37,9 +37,9 @@ arena_alloc_(ArenaParams *params)
       base = os_reserve(reserve_size);
       os_commit(base, commit_size);
     }
-    raddbg_annotate_vaddr_range(base, reserve_size, "arena %s:%i", params->allocation_site_file, params->allocation_site_line);
+    // raddbg_annotate_vaddr_range(base, reserve_size, "arena %s:%i", params->allocation_site_file, params->allocation_site_line);
   }
-  
+
   // rjf: panic on arena creation failure
 #if OS_FEATURE_GRAPHICAL
   if(Unlikely(base == 0))
@@ -48,7 +48,7 @@ arena_alloc_(ArenaParams *params)
     os_abort(1);
   }
 #endif
-  
+
   // rjf: extract arena header & fill
   Arena *arena = (Arena *)base;
   arena->current = arena;
@@ -87,12 +87,12 @@ arena_push(Arena *arena, U64 size, U64 align, B32 zero)
   Arena *current = arena->current;
   U64 pos_pre = AlignPow2(current->pos, align);
   U64 pos_pst = pos_pre + size;
-  
+
   // rjf: chain, if needed
   if(current->res < pos_pst && !(arena->flags & ArenaFlag_NoChain))
   {
     Arena *new_block = 0;
-    
+
 #if ARENA_FREE_LIST
     {
       Arena *prev_block;
@@ -113,7 +113,7 @@ arena_push(Arena *arena, U64 size, U64 align, B32 zero)
       }
     }
 #endif
-    
+
     if(new_block == 0)
     {
       U64 res_size = current->res_size;
@@ -129,22 +129,22 @@ arena_push(Arena *arena, U64 size, U64 align, B32 zero)
                               .allocation_site_file = current->allocation_site_file,
                               .allocation_site_line = current->allocation_site_line);
     }
-    
+
     new_block->base_pos = current->base_pos + current->res;
     SLLStackPush_N(arena->current, new_block, prev);
-    
+
     current = new_block;
     pos_pre = AlignPow2(current->pos, align);
     pos_pst = pos_pre + size;
   }
-  
+
   // rjf: compute the size we need to zero
   U64 size_to_zero = 0;
   if(zero)
   {
     size_to_zero = Min(current->cmt, pos_pst) - pos_pre;
   }
-  
+
   // rjf: commit new pages, if needed
   if(current->cmt < pos_pst)
   {
@@ -163,7 +163,7 @@ arena_push(Arena *arena, U64 size, U64 align, B32 zero)
     }
     current->cmt = cmt_pst_clamped;
   }
-  
+
   // rjf: push onto current block
   void *result = 0;
   if(current->cmt >= pos_pst)
@@ -176,7 +176,7 @@ arena_push(Arena *arena, U64 size, U64 align, B32 zero)
       MemoryZero(result, size_to_zero);
     }
   }
-  
+
   // rjf: panic on failure
 #if OS_FEATURE_GRAPHICAL
   if(Unlikely(result == 0))
@@ -185,7 +185,7 @@ arena_push(Arena *arena, U64 size, U64 align, B32 zero)
     os_abort(1);
   }
 #endif
-  
+
   return result;
 }
 
@@ -202,7 +202,7 @@ arena_pop_to(Arena *arena, U64 pos)
 {
   U64 big_pos = ClampBot(ARENA_HEADER_SIZE, pos);
   Arena *current = arena->current;
-  
+
 #if ARENA_FREE_LIST
   for(Arena *prev = 0; current->base_pos >= big_pos; current = prev)
   {

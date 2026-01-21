@@ -1,15 +1,18 @@
-#include <core.h>
 #include <stdio.h>
 
 #include <front/tokenizer.h>
 #include <front/front.h>
 
 
-S32 entry_point(String *args, U64 arg_count) {
-    frontend_init();
+internal void entry_point(CmdLine *cmd_line) {
+    // frontend_init();
+    printf("WTF");
+    for EachNode(cmd, String8Node, cmd_line->inputs.first) {
+            printf("%.*s", str8_varg(cmd->string));
+            Parser p = parser_begin(cmd->string);
+    }
 
-    Parser p = parser_begin(args[1]);
+    // Parser p = parser_begin(args[1]);
 
     frontend_deinit();
-    return 0;
 }

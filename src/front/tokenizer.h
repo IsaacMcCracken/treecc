@@ -55,8 +55,8 @@ struct Token {
 
 extern char *token_kind_strings[];
 B32 tokenizer_init(void);
-U32 hash_keyword(String str);
-String string_from_source(Byte *src, U32 start, U32 end);
-Token *tokenize(Arena *arena, U32 *tokencount, Byte *src, U32 srclen);
-void print_tokens(Token *tokens, U32 count, Byte *src);
+U32 hash_keyword(String8 str);
+String8 string_from_source(String8 src, U32 start, U32 end);
+Token *tokenize(Arena *arena, U32 *tokencount, String8 src_string);
+// void print_tokens(Token *tokens, U32 count, Byte *src);
 #endif

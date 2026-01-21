@@ -20,13 +20,13 @@ struct SeaDataType {
 
 typedef struct SeaField SeaField;
 struct SeaField {
-    String name;
+    String8 name;
     SeaDataType *type;
 };
 
 typedef struct SeaFunctionProto SeaFunctionProto;
 struct SeaFunctionProto {
-    String name;
+    String8 name;
     SeaField *args;
     U64 arg_count;
 };
@@ -116,7 +116,7 @@ typedef struct SeaScopeSymbolCell SeaScopeSymbolCell;
 struct SeaScopeSymbolCell {
     SeaScopeSymbolCell *hash_next; // next in hash buck
     SeaScopeSymbolCell *next; // next symbol inserted (for iteration)
-    String name;
+    String8 name;
     U16 slot;
 };
 
@@ -160,7 +160,7 @@ void sea_node_print_expr_debug(SeaNode *expr);
 
 // initalization
 SeaNodeMap sea_map_init(Arena *arena, U64 map_cap);
-U32 sea_hash_dbj2(Byte *data, U64 len);
+// U32 sea_hash_dbj2(Byte *data, U64 len);
 
 // Builder Functions
 SeaNode *sea_create_const_int(SeaFunctionGraph *fn, S64 v);

@@ -7,6 +7,9 @@
 #undef LAYER_COLOR
 #define LAYER_COLOR 0x3399ccff
 
+#include "base_inc.h"
+#include <os/os_inc.h>
+
 #include "base_core.c"
 #include "base_profile.c"
 #include "base_arena.c"

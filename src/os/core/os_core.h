@@ -316,9 +316,7 @@ internal Guid os_make_guid(void);
 // points if BUILD_ENTRY_DEFINING_UNIT is defined to 1. These will call
 // into the standard codebase program entry points, named "entry_point".
 
-#if BUILD_ENTRY_DEFINING_UNIT
-raddbg_entry_point(entry_point);
+
 internal no_inline void entry_point(CmdLine *cmdline);
-#endif
 
 #endif // OS_CORE_H

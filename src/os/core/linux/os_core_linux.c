@@ -4,6 +4,9 @@
 ////////////////////////////////
 //~ rjf: Helpers
 
+#define _GNU_SOURCE
+#include <dlfcn.h>
+
 internal DateTime
 os_lnx_date_time_from_tm(tm in, U32 msec)
 {
@@ -580,7 +583,7 @@ os_file_iter_next(Arena *arena, OS_FileIter *iter, OS_FileInfo *info_out)
     // rjf: get next entry
     lnx_iter->dp = readdir(lnx_iter->dir);
     good = (lnx_iter->dp != 0);
-    
+
     // rjf: unpack entry info
     struct stat st = {0};
     int stat_result = 0;
@@ -591,7 +594,7 @@ os_file_iter_next(Arena *arena, OS_FileIter *iter, OS_FileInfo *info_out)
       stat_result = stat((char *)full_path.str, &st);
       scratch_end(scratch);
     }
-    
+
     // rjf: determine if filtered
     B32 filtered = 0;
     if(good)
@@ -601,7 +604,7 @@ os_file_iter_next(Arena *arena, OS_FileIter *iter, OS_FileInfo *info_out)
                   (lnx_iter->dp->d_name[0] == '.' && lnx_iter->dp->d_name[1] == 0) ||
                   (lnx_iter->dp->d_name[0] == '.' && lnx_iter->dp->d_name[1] == '.' && lnx_iter->dp->d_name[2] == 0));
     }
-    
+
     // rjf: output & exit, if good & unfiltered
     if(good && !filtered)
     {
@@ -612,7 +615,7 @@ os_file_iter_next(Arena *arena, OS_FileIter *iter, OS_FileInfo *info_out)
       }
       break;
     }
-    
+
     // rjf: exit if not good
     if(!good)
     {
@@ -736,7 +739,7 @@ os_universal_time_from_local(DateTime *date_time)
   tm local_tm = os_lnx_tm_from_date_time(*date_time);
   local_tm.tm_isdst = -1;
   time_t universal_t = mktime(&local_tm);
-  
+
   // rjf: universal time_t -> DateTime
   tm universal_tm = {0};
   gmtime_r(&universal_t, &universal_tm);
@@ -753,7 +756,7 @@ os_local_time_from_universal(DateTime *date_time)
   time_t universal_t = timegm(&universal_tm);
   tm local_tm = {0};
   localtime_r(&universal_t, &local_tm);
-  
+
   // rjf: local tm -> DateTime
   DateTime result = os_lnx_date_time_from_tm(local_tm, 0);
   return result;
@@ -772,41 +775,41 @@ internal OS_Handle
 os_process_launch(OS_ProcessLaunchParams *params)
 {
   OS_Handle handle = {0};
-  
+
   posix_spawn_file_actions_t file_actions = {0};
   int file_actions_init_code = posix_spawn_file_actions_init(&file_actions);
   if(file_actions_init_code == 0)
   {
-    // redirect STDOUT 
+    // redirect STDOUT
     int stdout_code = posix_spawn_file_actions_adddup2(&file_actions, (int)params->stdout_file.u64[0], STDOUT_FILENO);
     Assert(stdout_code == 0);
-    
+
     // redirect STDERR
     int stderr_code = posix_spawn_file_actions_adddup2(&file_actions, (int)params->stderr_file.u64[0], STDERR_FILENO);
     Assert(stderr_code == 0);
-    
+
     // redirect STDIN
     int stdin_code = posix_spawn_file_actions_adddup2(&file_actions, (int)params->stdin_file.u64[0], STDIN_FILENO);
     Assert(stdin_code == 0);
-    
+
     posix_spawnattr_t attr = {0};
     int attr_init_code = posix_spawnattr_init(&attr);
     if(attr_init_code == 0)
     {
       Temp scratch = scratch_begin(0, 0);
-      
+
       // package argv
       char **argv = push_array(scratch.arena, char *, params->cmd_line.node_count + 1);
       {
         String8List l = str8_split_path(scratch.arena, params->path);
         str8_list_push(scratch.arena, &l, params->cmd_line.first->string);
         String8 path_to_exe = str8_path_list_join_by_style(scratch.arena, &l, PathStyle_SystemAbsolute);
-        
+
         argv[0] = (char *)path_to_exe.str;
         U64 arg_idx = 1;
         for EachNode(n, String8Node, params->cmd_line.first->next) { argv[arg_idx++] = (char *)n->string.str; }
       }
-      
+
       // package envp
       char **envp = 0;
       if(params->inherit_env)
@@ -822,39 +825,39 @@ os_process_launch(OS_ProcessLaunchParams *params)
           envp[env_idx] = (char *)n->string.str;
         }
       }
-      
+
       if(params->debug_subprocesses)
       {
         // not suported
         InvalidPath;
       }
-      
+
       if(!params->consoleless)
       {
         NotImplemented;
       }
-      
+
       // spawn process
       pid_t pid = 0;
       int spawn_code = posix_spawn(&pid, argv[0], &file_actions, &attr, argv, envp);
-      
+
       if(spawn_code == 0)
       {
         handle.u64[0] = (U64)pid;
       }
-      
+
       // clean up attributes
       int attr_destroy_code = posix_spawnattr_destroy(&attr);
       Assert(attr_destroy_code == 0);
-      
+
       scratch_end(scratch);
     }
-    
+
     // clean up file actions
     int file_actions_destroy_code = posix_spawn_file_actions_destroy(&file_actions);
     Assert(file_actions_destroy_code == 0);
   }
-  
+
   return handle;
 }
 
@@ -868,7 +871,7 @@ os_process_join(OS_Handle handle, U64 endt_us, U64 *exit_code_out)
     if(kill(pid, 0) >= 0)
     {
       result = (errno == ENOENT);
-      
+
       if(result)
       {
         int status;
@@ -1346,7 +1349,7 @@ os_safe_call(ThreadEntryPointFunctionType *func, ThreadEntryPointFunctionType *f
   SLLStackPush(os_lnx_safe_call_chain, &chain);
   chain.fail_handler = fail_handler;
   chain.ptr = ptr;
-  
+
   // rjf: set up sig handler info
   struct sigaction new_act = {0};
   new_act.sa_handler = os_lnx_safe_call_sig_handler;
@@ -1355,16 +1358,16 @@ os_safe_call(ThreadEntryPointFunctionType *func, ThreadEntryPointFunctionType *f
     SIGILL, SIGFPE, SIGSEGV, SIGBUS, SIGTRAP,
   };
   struct sigaction og_act[ArrayCount(signals_to_handle)] = {0};
-  
+
   // rjf: attach handler info for all signals
   for(U32 i = 0; i < ArrayCount(signals_to_handle); i += 1)
   {
     sigaction(signals_to_handle[i], &new_act, &og_act[i]);
   }
-  
+
   // rjf: call function
   func(ptr);
-  
+
   // rjf: reset handler info for all signals
   for(U32 i = 0; i < ArrayCount(signals_to_handle); i += 1)
   {
@@ -1390,78 +1393,78 @@ os_make_guid(void)
 ////////////////////////////////
 //~ rjf: @os_hooks Entry Points (Implemented Per-OS)
 
-internal void
-lnx_signal_handler(int sig, siginfo_t *info, void *arg)
-{
-  local_persist volatile U32 first = 0;
-  if (ins_atomic_u32_eval_cond_assign(&first, 1, 0) != 0)
-  {
-    for(;;)
-    {
-      sleep(UINT32_MAX);
-    }
-  }
-  
-  local_persist void *ips[4096];
-  int ips_count = backtrace(ips, ArrayCount(ips));
-  
-  fprintf(stderr, "A fatal signal was received: %s (%d). The process is terminating.\n", strsignal(sig), sig);
-  fprintf(stderr, "Create a new issue with this report at %s.\n\n", BUILD_ISSUES_LINK_STRING_LITERAL);
-  fprintf(stderr, "Callstack:\n");
-  for EachIndex(i, ips_count)
-  {
-    Dl_info info = {0};
-    dladdr(ips[i], &info);
-    
-    char cmd[2048];
-    snprintf(cmd, sizeof(cmd), "llvm-symbolizer --relative-address -f -e %s %lu", info.dli_fname, (unsigned long)ips[i] - (unsigned long)info.dli_fbase);
-    FILE *f = popen(cmd, "r");
-    if(f)
-    {
-      char func_name[256], file_name[256];
-      if(fgets(func_name, sizeof(func_name), f) && fgets(file_name, sizeof(file_name), f))
-      {
-        String8 func = str8_cstring(func_name);
-        if(func.size > 0) func.size -= 1;
-        String8 module = str8_skip_last_slash(str8_cstring(info.dli_fname));
-        String8 file   = str8_skip_last_slash(str8_cstring_capped(file_name, file_name + sizeof(file_name)));
-        if(file.size > 0) file.size -= 1;
-        
-        B32 no_func = str8_match(func, str8_lit("??"), StringMatchFlag_RightSideSloppy);
-        B32 no_file = str8_match(file, str8_lit("??"), StringMatchFlag_RightSideSloppy);
-        if(no_func) { func = str8_zero(); }
-        if(no_file) { file = str8_zero(); }
-        
-        fprintf(stderr, "%ld. [0x%016lx] %.*s%s%.*s %.*s\n", i+1, (unsigned long)ips[i], (int)module.size, module.str, (!no_func || !no_file) ? ", " : "", (int)func.size, func.str, (int)file.size, file.str);
-      }
-      pclose(f);
-    }
-    else
-    {
-      fprintf(stderr, "%ld. [0x%016lx] %s\n", i+1, (unsigned long)ips[i], info.dli_fname);
-    }
-  }
-  fprintf(stderr, "\nVersion: %s%s\n\n", BUILD_VERSION_STRING_LITERAL, BUILD_GIT_HASH_STRING_LITERAL_APPEND);
-  
-  _exit(0);
-}
+// internal void
+// lnx_signal_handler(int sig, siginfo_t *info, void *arg)
+// {
+//   local_persist volatile U32 first = 0;
+//   if (ins_atomic_u32_eval_cond_assign(&first, 1, 0) != 0)
+//   {
+//     for(;;)
+//     {
+//       sleep(UINT32_MAX);
+//     }
+//   }
+
+//   local_persist void *ips[4096];
+//   int ips_count = backtrace(ips, ArrayCount(ips));
+
+//   fprintf(stderr, "A fatal signal was received: %s (%d). The process is terminating.\n", strsignal(sig), sig);
+//   fprintf(stderr, "Create a new issue with this report at %s.\n\n", BUILD_ISSUES_LINK_STRING_LITERAL);
+//   fprintf(stderr, "Callstack:\n");
+//   for EachIndex(i, ips_count)
+//   {
+//     Dl_info info = {0};
+//     dladdr(ips[i], &info);
+
+//     char cmd[2048];
+//     snprintf(cmd, sizeof(cmd), "llvm-symbolizer --relative-address -f -e %s %lu", info.dli_fname, (unsigned long)ips[i] - (unsigned long)info.dli_fbase);
+//     FILE *f = popen(cmd, "r");
+//     if(f)
+//     {
+//       char func_name[256], file_name[256];
+//       if(fgets(func_name, sizeof(func_name), f) && fgets(file_name, sizeof(file_name), f))
+//       {
+//         String8 func = str8_cstring(func_name);
+//         if(func.size > 0) func.size -= 1;
+//         String8 module = str8_skip_last_slash(str8_cstring(info.dli_fname));
+//         String8 file   = str8_skip_last_slash(str8_cstring_capped(file_name, file_name + sizeof(file_name)));
+//         if(file.size > 0) file.size -= 1;
+
+//         B32 no_func = str8_match(func, str8_lit("??"), StringMatchFlag_RightSideSloppy);
+//         B32 no_file = str8_match(file, str8_lit("??"), StringMatchFlag_RightSideSloppy);
+//         if(no_func) { func = str8_zero(); }
+//         if(no_file) { file = str8_zero(); }
+
+//         fprintf(stderr, "%ld. [0x%016lx] %.*s%s%.*s %.*s\n", i+1, (unsigned long)ips[i], (int)module.size, module.str, (!no_func || !no_file) ? ", " : "", (int)func.size, func.str, (int)file.size, file.str);
+//       }
+//       pclose(f);
+//     }
+//     else
+//     {
+//       fprintf(stderr, "%ld. [0x%016lx] %s\n", i+1, (unsigned long)ips[i], info.dli_fname);
+//     }
+//   }
+//   fprintf(stderr, "\nVersion: %s%s\n\n", BUILD_VERSION_STRING_LITERAL, BUILD_GIT_HASH_STRING_LITERAL_APPEND);
+
+//   _exit(0);
+// }
 
 int
 main(int argc, char **argv)
 {
   // install signal handler for the crash call stacks
-  {
-    struct sigaction handler = { .sa_sigaction = lnx_signal_handler, .sa_flags = SA_SIGINFO, };
-    sigfillset(&handler.sa_mask);
-    sigaction(SIGILL, &handler, NULL);
-    sigaction(SIGTRAP, &handler, NULL);
-    sigaction(SIGABRT, &handler, NULL);
-    sigaction(SIGFPE, &handler, NULL);
-    sigaction(SIGBUS, &handler, NULL);
-    sigaction(SIGSEGV, &handler, NULL);
-    sigaction(SIGQUIT, &handler, NULL);
-  }
-  
+  // {
+  //   struct sigaction handler = { .sa_sigaction = lnx_signal_handler, .sa_flags = SA_SIGINFO, };
+  //   sigfillset(&handler.sa_mask);
+  //   sigaction(SIGILL, &handler, NULL);
+  //   sigaction(SIGTRAP, &handler, NULL);
+  //   sigaction(SIGABRT, &handler, NULL);
+  //   sigaction(SIGFPE, &handler, NULL);
+  //   sigaction(SIGBUS, &handler, NULL);
+  //   sigaction(SIGSEGV, &handler, NULL);
+  //   sigaction(SIGQUIT, &handler, NULL);
+  // }
+
   //- rjf: set up OS layer
   {
     //- rjf: get statically-allocated system/process info
@@ -1476,21 +1479,21 @@ main(int argc, char **argv)
       OS_ProcessInfo *info = &os_lnx_state.process_info;
       info->pid = (U32)getpid();
     }
-    
+
     //- rjf: set up thread context
     TCTX *tctx = tctx_alloc();
     tctx_select(tctx);
-    
+
     //- rjf: set up dynamically allocated state
     os_lnx_state.arena = arena_alloc();
     os_lnx_state.entity_arena = arena_alloc();
     pthread_mutex_init(&os_lnx_state.entity_mutex, 0);
-    
+
     //- rjf: grab dynamically allocated system info
     {
       Temp scratch = scratch_begin(0, 0);
       OS_SystemInfo *info = &os_lnx_state.system_info;
-      
+
       // rjf: get machine name
       B32 got_final_result = 0;
       U8 *buffer = 0;
@@ -1507,7 +1510,7 @@ main(int argc, char **argv)
           break;
         }
       }
-      
+
       // rjf: save name to info
       if(got_final_result && size > 0)
       {
@@ -1516,15 +1519,15 @@ main(int argc, char **argv)
         MemoryCopy(info->machine_name.str, buffer, info->machine_name.size);
         info->machine_name.str[info->machine_name.size] = 0;
       }
-      
+
       scratch_end(scratch);
     }
-    
+
     //- rjf: grab dynamically allocated process info
     {
       Temp scratch = scratch_begin(0, 0);
       OS_ProcessInfo *info = &os_lnx_state.process_info;
-      
+
       // rjf: grab binary path
       {
         // rjf: get self string
@@ -1542,7 +1545,7 @@ main(int argc, char **argv)
             break;
           }
         }
-        
+
         // rjf: save
         if(got_final_result && size > 0)
         {
@@ -1551,22 +1554,25 @@ main(int argc, char **argv)
           info->binary_path = push_str8_copy(os_lnx_state.arena, name_chopped);
         }
       }
-      
+
       // rjf: grab initial directory
       {
         info->initial_path = os_get_current_path(os_lnx_state.arena);
       }
-      
+
       // rjf: grab home directory
       {
         char *home = getenv("HOME");
         info->user_program_data_path = str8_cstring(home);
       }
-      
+
       scratch_end(scratch);
     }
   }
-  
+
   //- rjf: call into "real" entry point
   main_thread_base_entry_point(argc, argv);
+
+
+  return 0;
 }

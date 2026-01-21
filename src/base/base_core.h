@@ -23,8 +23,8 @@
 ////////////////////////////////
 //~ rjf: Codebase Keywords
 
-#define internal      static
-#define global        static
+#define internal
+#define global
 #define local_persist static
 
 #if COMPILER_MSVC || (COMPILER_CLANG && OS_WINDOWS)
