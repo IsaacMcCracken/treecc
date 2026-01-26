@@ -6,7 +6,12 @@
 #include <sea/sea.h>
 
 typedef struct Parser Parser;
+typedef struct FileNode FileNode;
+typedef struct FileList FileList;
+typedef struct Module Module;
+
 struct Parser {
+    SeaModule *m;
     Arena *arena;
     String8 filename;
     String8 src;
@@ -15,12 +20,31 @@ struct Parser {
     U32 curr;
 };
 
+struct FileNode {
+    FileNode *next;
+    Parser p;
+};
+
+struct FileList {
+    FileNode *first;
+    FileNode *last;
+    U64 count;
+};
+
+struct  Module {
+    String8 path;
+    Arena *arena;
+    SeaModule m;
+    FileList files;
+};
+
+
 
 int frontend_init(void);
 void frontend_deinit();
 
 
-Parser parser_begin(String8 filename);
+void module_add_file_and_parse(Module *m, String8 filename);
 Token current_token(Parser *p);
 SeaDataType *parse_type(Parser *p);
 

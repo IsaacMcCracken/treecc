@@ -1,5 +1,11 @@
 #include "node.h"
 
+
+internal SeaDataType primitives[] = {
+    {.kind = SeaDataType_I32},
+};
+
+
 typedef U8 IntTag;
 enum {
     IntTag_Signed,

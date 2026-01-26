@@ -5,3 +5,6 @@
 #include "src/front/tokenizer.c"
 #include "src/base/base_inc.c"
 #include "src/os/os_inc.c"
+
+#include "src/sea/node.c"
+#include "src/sea/module.c"

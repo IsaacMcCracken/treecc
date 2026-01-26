@@ -147,7 +147,7 @@ internal OS_FileID      os_id_from_file_path(String8 path);
 internal S64            os_file_id_compare(OS_FileID a, OS_FileID b);
 internal String8        os_string_from_file_range(Arena *arena, OS_Handle file, Rng1U64 range);
 internal String8        os_file_read_cstring(Arena *arena, OS_Handle file, U64 off);
-
+internal String8        os_file_read_entire_file(Arena *arena, OS_Handle file);
 ////////////////////////////////
 //~ rjf: Process Launcher Helpers
 

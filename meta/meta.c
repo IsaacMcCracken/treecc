@@ -1,7 +1,11 @@
+#include "../src/base/base_inc.h"
+#include "../src/os/os_inc.h"
 #include "keyword.c"
 
 
-int main(void)  {
+internal void entry_point(CmdLine *cmd_line)  {
     gen_keywords();
-    return 0;
 }
+
+#include "../src/base/base_inc.c"
+#include "../src/os/os_inc.c"

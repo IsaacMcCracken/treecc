@@ -29,7 +29,6 @@ B32 tokenizer_init(void) {
 
 
 
-
 U32 hash_keyword(String8 str) {
     U32 hash = 0;
     switch (str.size) {
@@ -50,7 +49,7 @@ U32 hash_keyword(String8 str) {
 }
 
 B32 is_whitespace_rune(U32 rune) {
-    if (rune == ' ' || rune == '\n' || rune == '\t' || rune == '\r') return 1;
+    if (rune == ' ' || rune == '\t' || rune == '\r') return 1;
     return 0;
 }
 
@@ -83,8 +82,11 @@ B32 is_identifier_rune(U32 rune) {
 String8 string_from_source(String8 src, U32 start, U32 end) {
     return (String8){
         (U8*)src.str + start,
-        Min(src.size, end - start)
+        end-start,
     };
+}
+String8 str8_tok(String8 src, Token tok) {
+    return string_from_source(src, tok.start, tok.end);
 }
 
 void append_token(Arena *arena, TokenKind kind, U32 start, U32 end, U32 *count) {
@@ -93,6 +95,9 @@ void append_token(Arena *arena, TokenKind kind, U32 start, U32 end, U32 *count) 
     tok->start = start;
     tok->end = end;
 
+    if (kind == 0) {
+        fprintf(stderr, "WTFART");
+    }
 
     *count += 1;
 }
@@ -105,155 +110,44 @@ void append_keyword_or_identifier(Arena *arena, String8 src, U32 start, U32 end,
     U32 hashv = hash%KEYWORD_MAP_SIZE;
 
     TokenKind kind = keyword_map[hashv];
-    if (str8_match(tok_str, keywords[kind], 0)) kind = TokenKind_Invalid;
+    if (!str8_match(tok_str, keywords[kind], 0)) kind = TokenKind_Invalid;
     if (kind == TokenKind_Invalid) kind = TokenKind_Identifier;
+
 
     append_token(arena, kind, start, end, tokencount);
 
 
 }
 
-// Token token_keyword_or_identifier(String8 src, U32 start, U32 end) {
-
-// }
-
-// Token token_lex(String8 src, U32 *cursor) {
-//     U32 curr = *cursor;
-
-//     S8 ch = src.str[curr];
-
-//     // skip whitespace
-//     while (is_whitespace_rune(ch) curr += 1;
-//     U32 prev = curr;
-
-//     if (is_identifier_begin_rune(ch)) {
-//         while (is_identifier_rune(ch)) {
-//             curr += 1;
-//             ch = src[curr];
-//         }
-
-//         append_keyword_or_identifier(arena, src, prev, curr, &count);
-//     } else if (is_number_begin_rune(ch)) {
-
-//         while (is_number_rune(ch)) {
-//             curr += 1;
-//             ch = src[curr];
-//             // putchar(ch);
-//         }
-
-//         append_token(arena, TokenKind_Int_Lit, prev, curr, &count);
-//     } else {
-//         curr += 1;
-//         switch (ch) {
-//             case '(':
-//                 append_token(arena, TokenKind_LParen, prev, curr, &count);
-//                 break;
-//             case ')':
-//                 append_token(arena, TokenKind_RParen, prev, curr, &count);
-//                 break;
-//             case '{':
-//                 append_token(arena, TokenKind_LBrace, prev, curr, &count);
-//                 break;
-//             case '}':
-//                 append_token(arena, TokenKind_RBrace, prev, curr, &count);
-//                 break;
-//             case '+':
-//                 append_token(arena, TokenKind_Plus, prev, curr, &count);
-//                 break;
-//             case '-':
-//                 append_token(arena, TokenKind_Minus, prev, curr, &count);
-//                 break;
-//             case '*':
-//                 append_token(arena, TokenKind_Star, prev, curr, &count);
-//                 break;
-//             case '/':
-//                 append_token(arena, TokenKind_Slash, prev, curr, &count);
-//                 break;
-//             case ';':
-//                 append_token(arena, TokenKind_SemiColon, prev, curr, &count);
-//                 break;
-//             case ',':
-//                 append_token(arena, TokenKind_Comma, prev, curr, &count);
-//                 break;
-//             case '=': {
-//                 // TODO bound check
-//                 if (src[curr] == '=') {
-//                     curr += 1;
-//                     append_token(arena, TokenKind_LogicEqual, prev, curr, &count);
-//                 } else {
-//                     append_token(arena, TokenKind_Equals, prev, curr, &count);
-//                 }
-
-//             } break;
-
-//             case '!': {
-//                 // TODO bound check
-//                 if (src[curr] == '=') {
-//                     curr += 1;
-//                     append_token(arena, TokenKind_LogicNotEqual, prev, curr, &count);
-//                 } else {
-//                     append_token(arena, TokenKind_LogicNot, prev, curr, &count);
-//                 }
-
-//             } break;
-
-//             case '>': {
-//                 // TODO bound check
-//                 if (src[curr] == '=') {
-//                     curr += 1;
-//                     append_token(arena, TokenKind_LogicGreaterEqual, prev, curr, &count);
-//                 } else {
-//                     append_token(arena, TokenKind_LogicGreaterThan, prev, curr, &count);
-//                 }
-
-//             } break;
-
-//             case '<': {
-//                 // TODO bound check
-//                 if (src[curr] == '=') {
-//                     curr += 1;
-//                     append_tokearena, TokenKind_LogicLesserEqual prev, cu , &cou);
-//                 } else {
-//                     append_tokearena, TokenKind_LogicLesserThan prev, cu , &cou);
-//                 }
-
-//             } break;
-//         }
-//     }
-// }
-// }
-
-Token *tokenize(Arena *arena, U32 *tokencount, String8 src_string) {
-
-
-    char *src = src_string.str;
-    U64 srclen = src_string.size;
-    U32 count = 0;
-    U32 curr = 0, prev = 0;
-
-    Token *tokens = arena_push(arena, 0, 1, 0);
-    while (curr < srclen) {
+Token *tokenize(Arena *arena, U32 *token_count, String8 src) {
+    arena_align_forward(arena, AlignOf(Token));
+    Token *tokens = arena_pos_ptr(arena);
+    U32 curr = 0, prev = 0, count = 0;
+    while (curr < src.size) {
         prev = curr;
-        U8 ch = src[curr];
+        U8 ch = src.str[curr];
         if (is_identifier_begin_rune(ch)) {
             while (is_identifier_rune(ch)) {
                 curr += 1;
-                ch = src[curr];
+                ch = src.str[curr];
             }
 
-            append_keyword_or_identifier(arena, src_string, prev, curr, &count);
+            append_keyword_or_identifier(arena, src, prev, curr, &count);
         } else if (is_number_begin_rune(ch)) {
 
             while (is_number_rune(ch)) {
                 curr += 1;
-                ch = src[curr];
+                ch = src.str[curr];
                 // putchar(ch);
             }
 
-            append_token(arena, TokenKind_Int_Lit, prev, curr, &count);
+            append_token(arena, TokenKind_IntLit, prev, curr, &count);
         } else {
             curr += 1;
             switch (ch) {
+                case '\n':
+                    append_token(arena, TokenKind_NewLine, prev, curr, &count);
+                    break;
                 case '(':
                     append_token(arena, TokenKind_LParen, prev, curr, &count);
                     break;
@@ -286,7 +180,7 @@ Token *tokenize(Arena *arena, U32 *tokencount, String8 src_string) {
                     break;
                 case '=': {
                     // TODO bound check
-                    if (src[curr] == '=') {
+                    if (src.str[curr] == '=') {
                         curr += 1;
                         append_token(arena, TokenKind_LogicEqual, prev, curr, &count);
                     } else {
@@ -297,7 +191,7 @@ Token *tokenize(Arena *arena, U32 *tokencount, String8 src_string) {
 
                 case '!': {
                     // TODO bound check
-                    if (src[curr] == '=') {
+                    if (src.str[curr] == '=') {
                         curr += 1;
                         append_token(arena, TokenKind_LogicNotEqual, prev, curr, &count);
                     } else {
@@ -308,7 +202,7 @@ Token *tokenize(Arena *arena, U32 *tokencount, String8 src_string) {
 
                 case '>': {
                     // TODO bound check
-                    if (src[curr] == '=') {
+                    if (src.str[curr] == '=') {
                         curr += 1;
                         append_token(arena, TokenKind_LogicGreaterEqual, prev, curr, &count);
                     } else {
@@ -319,7 +213,7 @@ Token *tokenize(Arena *arena, U32 *tokencount, String8 src_string) {
 
                 case '<': {
                     // TODO bound check
-                    if (src[curr] == '=') {
+                    if (src.str[curr] == '=') {
                         curr += 1;
                         append_token(arena, TokenKind_LogicLesserEqual, prev, curr, &count);
                     } else {
@@ -327,18 +221,31 @@ Token *tokenize(Arena *arena, U32 *tokencount, String8 src_string) {
                     }
 
                 } break;
+
+
+                case ' ':
+                case '\t':
+                case '\r': {
+                    // DO NOTHING FOR WHITE SPACE
+                } break;
+
+                default: {
+                    fprintf(stderr, "Error: could not recognize character '%c'", ch);
+                    assert(0);
+                }
             }
         }
     }
 
-    *tokencount = count;
+    *token_count = count;
     return tokens;
 }
 
-// void print_tokens(Token *tokens, U32 count, Byte *src) {
-//     for (U32 i = 0; i < count; i++) {
-//         Token tok = tokens[i];
-//         String8 str = string_from_source(src, tok.start, tok.end);
-//         printf("'%.*s' = %d\n", (int)str.size, str.str, tok.kind);
-//     }
-// }
+
+void print_tokens(Token *tokens, U32 count, String8 src) {
+    for (U32 i = 0; i < count; i++) {
+        Token tok = tokens[i];
+        String8 str = str8_tok(src, tok);
+        printf("'%.*s' = %d\n", (int)str.size, str.str, tok.kind);
+    }
+}

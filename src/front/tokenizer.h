@@ -6,6 +6,7 @@
 typedef U32 TokenKind;
 enum {
   TokenKind_Invalid,
+  TokenKind_NewLine,
 
   TokenKind_Int,
 
@@ -32,7 +33,7 @@ enum {
   TokenKind_LogicLesserEqual,
 
   TokenKind_Identifier,
-  TokenKind_Int_Lit,
+  TokenKind_IntLit,
 
   TokenKind_Return,
   TokenKind_If,
@@ -56,7 +57,7 @@ struct Token {
 extern char *token_kind_strings[];
 B32 tokenizer_init(void);
 U32 hash_keyword(String8 str);
-String8 string_from_source(String8 src, U32 start, U32 end);
+String8 str8_tok(String8 src, Token tok);
 Token *tokenize(Arena *arena, U32 *tokencount, String8 src_string);
-// void print_tokens(Token *tokens, U32 count, Byte *src);
+void print_tokens(Token *tokens, U32 count, String8 src);
 #endif

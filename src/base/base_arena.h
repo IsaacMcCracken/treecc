@@ -69,7 +69,10 @@ internal void arena_release(Arena *arena);
 //- rjf: arena push/pop/pos core functions
 internal void *arena_push(Arena *arena, U64 size, U64 align, B32 zero);
 internal U64   arena_pos(Arena *arena);
+internal void *arena_pos_ptr(Arena *arena);
+internal void  arena_align_forward(Arena *arena, U64 align);
 internal void  arena_pop_to(Arena *arena, U64 pos);
+internal void *arena_get_current(Arena *arena);
 
 //- rjf: arena push/pop helpers
 internal void arena_clear(Arena *arena);
@@ -84,7 +87,7 @@ internal void temp_end(Temp temp);
 #define push_array_aligned(a, T, c, align) (T *)arena_push((a), sizeof(T)*(c), (align), (1))
 #define push_array_no_zero(a, T, c) push_array_no_zero_aligned(a, T, c, Max(8, AlignOf(T)))
 #define push_array(a, T, c) push_array_aligned(a, T, c, Max(8, AlignOf(T)))
-#define push_item(a, T) (T *)arena_push((a), sizeof(T), Max(8, AlignOf(T)), (1))
-#define push_item_no_zero(a, T) (T *)arena_push((a), sizeof(T), Max(8, AlignOf(T)), (0))
+#define push_item(a, T) (T *)arena_push((a), sizeof(T), AlignOf(T), (1))
+#define push_item_no_zero(a, T) (T *)arena_push((a), sizeof(T), AlignOf(T), (0))
 
 #endif // BASE_ARENA_H

@@ -190,6 +190,23 @@ os_file_read_cstring(Arena *arena, OS_Handle file, U64 off)
   return result;
 }
 
+internal String8
+os_file_read_entire_file(Arena *arena, OS_Handle file)
+{
+  FileProperties properties = os_properties_from_file(file);
+
+  U8 *buf = push_array_no_zero(arena, U8, properties.size);
+  U64 read_size = os_file_read(file, r1u64(0, properties.size), buf);
+
+  if (read_size != properties.size) {
+      // TODO: fail strategy
+  }
+
+  String8 result = (String8){buf, read_size};
+
+  return result;
+}
+
 ////////////////////////////////
 //~ rjf: Process Launcher Helpers
 

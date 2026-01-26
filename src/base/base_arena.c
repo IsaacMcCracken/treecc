@@ -189,6 +189,25 @@ arena_push(Arena *arena, U64 size, U64 align, B32 zero)
   return result;
 }
 
+internal void
+arena_align_forward(Arena *arena, U64 align) {
+    Arena *current = arena->current;
+    U64 pos_pre = AlignPow2(current->pos, align);
+    current->pos = pos_pre;
+
+}
+
+
+internal void*
+arena_pos_ptr(Arena *arena)
+{
+  Arena *current = arena->current;
+  U64 pos = current->pos;
+  U8 *result = (U8 *)current+pos;
+
+  return (void*)result;
+}
+
 internal U64
 arena_pos(Arena *arena)
 {
@@ -196,6 +215,7 @@ arena_pos(Arena *arena)
   U64 pos = current->base_pos + current->pos;
   return pos;
 }
+
 
 internal void
 arena_pop_to(Arena *arena, U64 pos)
@@ -224,6 +244,8 @@ arena_pop_to(Arena *arena, U64 pos)
   AsanPoisonMemoryRegion((U8*)current + new_pos, (current->pos - new_pos));
   current->pos = new_pos;
 }
+
+
 
 //- rjf: arena push/pop helpers
 

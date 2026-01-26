@@ -584,10 +584,10 @@ sign_from_str8(String8 string, String8 *string_tail)
       break;
     }
   }
-  
+
   // output part of string after signs
   *string_tail = str8_skip(string, i);
-  
+
   // output integer sign
   S64 sign = (neg_count & 1)?-1:+1;
   return sign;
@@ -699,7 +699,7 @@ try_u64_from_str8_c_rules(String8 string, U64 *x)
       radix = 10, prefix_size = 0;
     }
   }
-  
+
   // rjf: convert if we can
   String8 integer    = str8_skip(string, prefix_size);
   B32     is_integer = str8_is_integer(integer, radix);
@@ -707,7 +707,7 @@ try_u64_from_str8_c_rules(String8 string, U64 *x)
   {
     *x = u64_from_str8(integer, radix);
   }
-  
+
   return is_integer;
 }
 
@@ -855,7 +855,7 @@ str8_from_u64(Arena *arena, U64 u64, U32 radix, U8 min_digits, U8 digit_group_se
       case 8: {prefix = str8_lit("0o");}break;
       case 2: {prefix = str8_lit("0b");}break;
     }
-    
+
     // rjf: determine # of chars between separators
     U8 digit_group_size = 3;
     switch(radix)
@@ -866,7 +866,7 @@ str8_from_u64(Arena *arena, U64 u64, U32 radix, U8 min_digits, U8 digit_group_se
       case 16:
       {digit_group_size = 4;}break;
     }
-    
+
     // rjf: prep
     U64 needed_leading_0s = 0;
     {
@@ -897,7 +897,7 @@ str8_from_u64(Arena *arena, U64 u64, U32 radix, U8 min_digits, U8 digit_group_se
       result.str = push_array_no_zero(arena, U8, result.size + 1);
       result.str[result.size] = 0;
     }
-    
+
     // rjf: fill contents
     {
       U64 u64_reduce = u64;
@@ -925,7 +925,7 @@ str8_from_u64(Arena *arena, U64 u64, U32 radix, U8 min_digits, U8 digit_group_se
         result.str[prefix.size + leading_0_idx] = '0';
       }
     }
-    
+
     // rjf: fill prefix
     if(prefix.size != 0)
     {
@@ -974,7 +974,7 @@ f64_from_str8(String8 string)
     {
       sign = 1.0;
     }
-    
+
     // rjf: gather numerics
     U64 num_valid_chars = 0;
     char buffer[64];
@@ -990,10 +990,10 @@ f64_from_str8(String8 string)
         exp = (string.str[idx] == 'e');
       }
     }
-    
+
     // rjf: null-terminate (the reason for all of this!!!!!!)
     buffer[num_valid_chars] = 0;
-    
+
     // rjf: do final conversion
     result = sign * atof(buffer);
   }
@@ -1458,7 +1458,7 @@ str8_path_list_resolve_dots_in_place(String8List *path, PathStyle style)
   {
     // save next now
     next = node->next;
-    
+
     // cases:
     if(node == first && style == PathStyle_WindowsAbsolute)
     {
@@ -1480,8 +1480,8 @@ str8_path_list_resolve_dots_in_place(String8List *path, PathStyle style)
       }
     }
     goto save_with_stack;
-    
-    
+
+
     // handlers:
     save_with_stack:
     {
@@ -1499,13 +1499,13 @@ str8_path_list_resolve_dots_in_place(String8List *path, PathStyle style)
       stack_node->node = node;
       continue;
     }
-    
+
     save_without_stack:
     {
       str8_list_push_node(path, node);
       continue;
     }
-    
+
     eliminate_stack_top:
     {
       path->node_count -= 1;
@@ -1521,7 +1521,7 @@ str8_path_list_resolve_dots_in_place(String8List *path, PathStyle style)
       }
       continue;
     }
-    
+
     do_nothing: continue;
   }
   scratch_end(scratch);
@@ -1539,7 +1539,7 @@ str8_path_list_join_by_style(Arena *arena, String8List *path, PathStyle style)
     {
       params.sep = str8_lit("/");
     }break;
-    
+
     case PathStyle_UnixAbsolute:
     {
       params.pre = str8_lit("/");
@@ -1558,7 +1558,7 @@ str8_txt_pt_pair_from_string(String8 string)
     String8 file_part = {0};
     String8 line_part = {0};
     String8 col_part = {0};
-    
+
     // rjf: grab file part
     for(U64 idx = 0; idx <= string.size; idx += 1)
     {
@@ -1576,7 +1576,7 @@ str8_txt_pt_pair_from_string(String8 string)
         break;
       }
     }
-    
+
     // rjf: grab line/column
     {
       U64 colon_pos = str8_find_needle(line_part, 0, str8_lit(":"), 0);
@@ -1586,13 +1586,13 @@ str8_txt_pt_pair_from_string(String8 string)
         line_part = str8_prefix(line_part, colon_pos);
       }
     }
-    
+
     // rjf: convert line/column strings to numerics
     U64 line = 0;
     U64 column = 0;
     try_u64_from_str8_c_rules(line_part, &line);
     try_u64_from_str8_c_rules(col_part, &column);
-    
+
     // rjf: fill
     pair.string = file_part;
     pair.pt = txt_pt((S64)line, (S64)column);
@@ -1609,14 +1609,14 @@ internal String8
 path_relative_dst_from_absolute_dst_src(Arena *arena, String8 dst, String8 src)
 {
   Temp scratch = scratch_begin(&arena, 1);
-  
+
   // rjf: gather path parts
   String8 dst_name = str8_skip_last_slash(dst);
   String8 src_folder = src;
   String8 dst_folder = str8_chop_last_slash(dst);
   String8List src_folders = str8_split_path(scratch.arena, src_folder);
   String8List dst_folders = str8_split_path(scratch.arena, dst_folder);
-  
+
   // rjf: count # of backtracks to get from src -> dest
   U64 num_backtracks = src_folders.node_count;
   for(String8Node *src_n = src_folders.first, *bp_n = dst_folders.first;
@@ -1632,7 +1632,7 @@ path_relative_dst_from_absolute_dst_src(Arena *arena, String8 dst, String8 src)
       break;
     }
   }
-  
+
   // rjf: only build relative string if # of backtracks is not the entire `src`.
   // if getting to `dst` from `src` requires erasing the entire `src`, then the
   // only possible way to get to `dst` from `src` is via absolute path.
@@ -1649,7 +1649,7 @@ path_relative_dst_from_absolute_dst_src(Arena *arena, String8 dst, String8 src)
     {
       str8_list_push(scratch.arena, &dst_path_strs, str8_lit(".."));
     }
-    
+
     // rjf: build parts of dst which are unique from src
     {
       B32 unique_from_src = 0;
@@ -1671,10 +1671,10 @@ path_relative_dst_from_absolute_dst_src(Arena *arena, String8 dst, String8 src)
         }
       }
     }
-    
+
     // rjf: build file name
     str8_list_push(scratch.arena, &dst_path_strs, dst_name);
-    
+
     // rjf: join
     StringJoin join = {0};
     {
@@ -1713,10 +1713,10 @@ path_normalized_list_from_string(Arena *arena, String8 path_string, PathStyle *s
   // rjf: analyze path
   PathStyle path_style = path_style_from_str8(path_string);
   String8List path = str8_split_path(arena, path_string);
-  
+
   // rjf: resolve dots
   str8_path_list_resolve_dots_in_place(&path, path_style);
-  
+
   // rjf: return
   if(style_out != 0)
   {
@@ -2043,7 +2043,7 @@ str8_from_32(Arena *arena, String32 in)
 internal String32
 str32_from_8(Arena *arena, String8 in)
 {
-  String32 result = str32_zero(); 
+  String32 result = str32_zero();
   if(in.size)
   {
     U64 cap = in.size;
@@ -2294,7 +2294,7 @@ try_guid_from_string(String8 string, Guid *guid_out)
     String8 data3_str    = list.first->next->next->string;
     String8 data4_hi_str = list.first->next->next->next->string;
     String8 data4_lo_str = list.first->next->next->next->next->string;
-    if(str8_is_integer(data1_str, 16) && 
+    if(str8_is_integer(data1_str, 16) &&
        str8_is_integer(data2_str, 16) &&
        str8_is_integer(data3_str, 16) &&
        str8_is_integer(data4_hi_str, 16) &&
@@ -2654,15 +2654,15 @@ str8_serial_write_to_dst(String8List *srl, void *out){
 internal U64
 str8_serial_push_align(Arena *arena, String8List *srl, U64 align){
   Assert(IsPow2(align));
-  
+
   U64 pos = srl->total_size;
   U64 new_pos = AlignPow2(pos, align);
   U64 size = (new_pos - pos);
-  
+
   if(size != 0)
   {
     U8 *buf = push_array(arena, U8, size);
-    
+
     String8 *str = &srl->last->string;
     if (str->str + str->size == buf){
       srl->last->string.size += size;
@@ -2825,7 +2825,7 @@ str8_deserial_read_windows_utf16_string16(String8 string, U64 off, String16 *str
   U16 *str = (U16 *)str8_deserial_get_raw_ptr(string, off, size);
   U64 count = size / sizeof(*str);
   *str_out = str16(str, count);
-  
+
   U64 read_size_with_null = size + sizeof(*str);
   return read_size_with_null;
 }
@@ -2856,7 +2856,7 @@ str8_compar(String8 a, String8 b, B32 ignore_case)
         cmp = +1;
         break;
       }
-    } 
+    }
   } else {
     for (U64 i = 0; i < size; ++i) {
       if (a.str[i] < b.str[i]) {
@@ -2866,9 +2866,9 @@ str8_compar(String8 a, String8 b, B32 ignore_case)
         cmp = +1;
         break;
       }
-    } 
+    }
   }
-  
+
   if (cmp == 0) {
     // shorter prefix must precede longer prefixes
     if (a.size > b.size) {
@@ -2877,7 +2877,7 @@ str8_compar(String8 a, String8 b, B32 ignore_case)
       cmp = -1;
     }
   }
-  
+
   return cmp;
 }
 

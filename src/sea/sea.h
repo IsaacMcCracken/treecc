@@ -1,16 +1,16 @@
-#ifndef TREE_NODE_H
-#define TREE_NODE_H
+#ifndef SEA_NODE_H
+#define SEA_NODE_H
 #include <base/base_inc.h>
 
 typedef U8 SeaDataKind;
 enum {
-  SeaDataType_Top,
-  SeaDataType_Bottom,
-  SeaDataType_I32,
-  SeaDataType_I64,
-  SeaDataType_Control,
-  SeaDataType_Mem,
-  SeaDataType_DeadControl,
+  SeaDataKind_I32,
+  SeaDataKind_I64,
+  SeaDataKind_Control,
+  SeaDataKind_DeadControl,
+  SeaDataKind_Mem,
+  SeaDataKind_Top,
+  SeaDataKind_Bottom,
 };
 
 typedef struct SeaDataType SeaDataType;
@@ -24,13 +24,45 @@ struct SeaField {
     SeaDataType *type;
 };
 
+typedef struct SeaFieldArray SeaFieldArray;
+struct SeaFieldArray {
+    SeaField *fields;
+    U64 count;
+};
+
 typedef struct SeaFunctionProto SeaFunctionProto;
 struct SeaFunctionProto {
     String8 name;
-    SeaField *args;
-    U64 arg_count;
+    SeaFieldArray args;
 };
 
+typedef U8 SeaSymbolKind;
+enum {
+    SeaSymbolKind_Invalid,
+    SeaSymbolKind_Function,
+    SeaSymbolKind_Global,
+};
+
+typedef struct SeaSymbolEntry SeaSymbolEntry;
+struct SeaSymbolEntry {
+    SeaSymbolEntry *next;
+    SeaSymbolEntry *next_hash;
+    String8 name;
+    SeaSymbolKind kind;
+    union {
+        SeaFunctionProto fn_proto;
+    };
+};
+
+typedef struct SeaSymbols SeaSymbols;
+struct SeaSymbols {
+    Arena *arena;
+    SeaSymbolEntry **cells;
+    U64 cap;
+    U64 count;
+    SeaSymbolEntry *first;
+    SeaSymbolEntry *last;
+};
 
 typedef U16 SeaNodeKind;
 enum {
@@ -76,7 +108,7 @@ enum {
     SeaNodeKind_Phi,
 };
 
-
+typedef struct SeaModule SeaModule;
 typedef struct SeaNode SeaNode;
 
 typedef struct SeaUser SeaUser;
@@ -141,20 +173,47 @@ struct SeaScopeManager {
 
 typedef struct SeaFunctionGraph SeaFunctionGraph;
 struct SeaFunctionGraph {
+    SeaModule *m;
     Arena *arena;
     Arena *tmp;
+    SeaFunctionProto proto;
     U64 deadspace;
     SeaScopeManager mscope;
     SeaNode *scope;
     SeaNodeMap map;
     SeaNode *start;
     SeaNode *stop;
+    SeaNode *curr; // only used in graph creation
+};
+
+typedef struct SeaFunctionGraphNode SeaFunctionGraphNode;
+struct SeaFunctionGraphNode {
+    SeaFunctionGraphNode *next;
+    SeaFunctionGraph fn;
+};
+
+
+typedef struct SeaFunctionGraphList SeaFunctionGraphList;
+struct SeaFunctionGraphList {
+    SeaFunctionGraphNode *first;
+    SeaFunctionGraphNode *last;
+    U64 count;
+};
+
+struct SeaModule {
+    RWMutex lock;
+    SeaSymbols symbols;
+    SeaFunctionGraphList functions;
 };
 
 
 
 
-// temporary
+// Module
+SeaModule sea_create_module(void);
+SeaFunctionGraph *sea_add_function(SeaModule *m, SeaFunctionProto proto);
+void sea_add_function_symbol(SeaModule *m, SeaFunctionProto proto);
+
 
 void sea_node_print_expr_debug(SeaNode *expr);
 

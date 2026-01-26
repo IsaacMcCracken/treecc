@@ -1,2 +1,2 @@
-clang meta/meta.c -I include/ -o metagen
+clang meta/meta.c -I src/ -o metagen -lm
 ./metagen
