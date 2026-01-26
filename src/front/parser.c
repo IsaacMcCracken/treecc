@@ -173,6 +173,7 @@ void parse_stmt(Parser *p, SeaFunctionGraph *fn) {
         case TokenKind_Return: {
             SeaNode *expr = parse_expr(p, fn);
             // TODO add control stuff (FIXXX)
+            printf("Solved: %ld\n", expr->vint);
             SeaNode *ret = sea_create_return(fn, fn->start, expr);
         } break;
 
