@@ -68,7 +68,7 @@ typedef U16 SeaNodeKind;
 enum {
     SeaNodeKind_Invalid,
 
-    SeaNodeKind_SymbolTable,
+    SeaNodeKind_Scope,
 
     //*****************//
     // Control Flow
@@ -156,7 +156,7 @@ typedef struct SeaScopeNode SeaScopeNode;
 struct SeaScopeNode {
     SeaNode *prev; // previous scope / parent
     SeaScopeSymbolCell **cells; // buckets for table lookup
-    U64 capacity; // capacity
+    U64 cap; // capacity
     SeaScopeSymbolCell *head; // first symbol (for iteration)
     SeaScopeSymbolCell *tail; // last symbol (for appending)
     U64 symbol_count;
@@ -166,7 +166,7 @@ struct SeaScopeNode {
 typedef struct SeaScopeManager SeaScopeManager;
 struct SeaScopeManager {
     SeaScopeSymbolCell *cellpool; // free list for cells
-    SeaScopeNode *scopepool; // free list for scopes
+    SeaNode *scopepool; // free list for scopes
     U64 default_cap; // capacity for new scopes
 };
 
@@ -232,5 +232,13 @@ SeaNode *sea_create_proj(SeaFunctionGraph *fn, SeaNode *input, U16 v);
 SeaNode *sea_create_if(SeaFunctionGraph *fn, SeaNode *prev_ctrl);
 SeaNode *sea_create_region_for_if(SeaFunctionGraph *fn, SeaNode *t, SeaNode *f, U16 output_reserves);
 SeaNode *sea_create_phi2(SeaFunctionGraph *fn, SeaNode *region, SeaNode *a, SeaNode *b);
+
+
+void sea_push_new_scope(SeaFunctionGraph *fn);
+void sea_pop_scope(SeaFunctionGraph *fn, SeaNode *scope);
+void sea_free_all_scopes(SeaFunctionGraph *fn, SeaNode *scope);
+SeaNode *sea_duplicate_scope(SeaFunctionGraph *fn, SeaNode *original);
+void sea_scope_insert_symbol(SeaFunctionGraph *fn, SeaNode *scope, String8 name, SeaNode *node);
+void sea_insert_local_symbol(SeaFunctionGraph *fn, String8 name, SeaNode *node);
 
 #endif

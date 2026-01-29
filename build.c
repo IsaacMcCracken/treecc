@@ -8,3 +8,4 @@
 
 #include "src/sea/node.c"
 #include "src/sea/module.c"
+#include "src/sea/scope.c"

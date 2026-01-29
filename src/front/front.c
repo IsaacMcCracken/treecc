@@ -9,6 +9,7 @@ State s = { 0 };
 
 int frontend_init(void) {
     tokenizer_init();
+    return 0;
 }
 
 void frontend_deinit(void) {

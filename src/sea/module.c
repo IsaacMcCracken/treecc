@@ -50,12 +50,16 @@ void sea_add_function_symbol(SeaModule *m, SeaFunctionProto proto) {
 }
 
 
+
 SeaFunctionGraph *sea_add_function(SeaModule *m, SeaFunctionProto proto) {
     Arena *arena = arena_alloc(MB(1)); // TODO heuristic for how much
+
+    // Yippee
     SeaFunctionGraphNode *fn_node = push_item(arena, SeaFunctionGraphNode);
     SeaFunctionGraph *fn = &fn_node->fn;
     fn->proto = proto;
     fn->m = m;
+    fn->mscope.default_cap = 61;
 
     fn->map = sea_map_init(arena, 101);
 
@@ -67,6 +71,16 @@ SeaFunctionGraph *sea_add_function(SeaModule *m, SeaFunctionProto proto) {
     fn->start = start;
     fn->stop = stop;
     fn->arena = arena;
+
+    sea_push_new_scope(fn);
+
+    for EachIndex(i, proto.args.count) {
+        SeaNode *arg_node = sea_create_proj(fn, fn->start, i);
+        arg_node->type = proto.args.fields[i].type;
+        sea_insert_local_symbol(fn, proto.args.fields[i].name, arg_node);
+    }
+
+
 
 
     {

@@ -173,7 +173,7 @@ void parse_stmt(Parser *p, SeaFunctionGraph *fn) {
         case TokenKind_Return: {
             SeaNode *expr = parse_expr(p, fn);
             // TODO add control stuff (FIXXX)
-            printf("Solved: %ld\n", expr->vint);
+            printf("%.*s() = %lld\n", str8_varg(fn->proto.name), expr->vint);
             SeaNode *ret = sea_create_return(fn, fn->start, expr);
         } break;
 
@@ -298,6 +298,16 @@ void parse_decl(Parser *p) {
     }
 }
 
+void parse_decls(Parser *p) {
+    while (p->curr < p->tok_count) {
+        Token tok = current_token(p);
+        if (tok.kind == TokenKind_EOF) {
+            return;
+        }
+        parse_decl(p);
+    }
+}
+
 
 
 void module_add_file_and_parse(Module *m, String8 filename) {
@@ -311,7 +321,7 @@ void module_add_file_and_parse(Module *m, String8 filename) {
 
 
     String8 path = str8_list_join(scratch.arena, &l, 0);
-    printf("Parsing: \"%.*s\"\n", str8_varg(path));
+    // printf("Parsing: \"%.*s\"\n", str8_varg(path));
 
     OS_Handle file = os_file_open(OS_AccessFlag_Read, path);
     scratch_end(scratch);
@@ -322,6 +332,7 @@ void module_add_file_and_parse(Module *m, String8 filename) {
     U32 tok_count = 0;
     Token *tokens = tokenize(arena, &tok_count, src);
 
+    printf("Parsing: %.*s\n%.*s\n",str8_varg(filename), str8_varg(src));
 
     Parser p = (Parser){
         .m = &m->m,
