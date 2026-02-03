@@ -18,6 +18,7 @@ struct Parser {
     Token *tokens;
     U32 tok_count;
     U32 curr;
+    U32 line;
 };
 
 struct FileNode {

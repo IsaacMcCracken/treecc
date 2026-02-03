@@ -1,4 +1,10 @@
 #include <front/front.h>
+#include <stdarg.h>
+
+
+void parse_stmt(Parser *p, SeaFunctionGraph *fn);
+void parse_block(Parser *p, SeaFunctionGraph *fn);
+
 
 Token current_token(Parser *p) {
     return p->tokens[p->curr];
@@ -54,11 +60,52 @@ S32 operatator_precedence(Token tok) {
 void skip_newlines(Parser *p) {
     Token tok = current_token(p);
     while (tok.kind == TokenKind_NewLine) {
+        p->line += 1;
         advance_token(p);
         tok = current_token(p);
     }
 }
 
+String8 parser_get_curr_line_str8(Parser *p) {
+    // start
+    S32 curr = p->curr;
+    while (curr > 0 && p->tokens[curr].kind != TokenKind_NewLine) {
+        curr -= 1;
+    }
+
+    if (curr != 0) curr += 1;
+
+    Token start_tok = p->tokens[curr];
+
+    curr = p->curr;
+    while (curr < p->tok_count && p->tokens[curr].kind != TokenKind_NewLine) {
+        curr += 1;
+    }
+    curr -= 1;
+    Token end_tok = p->tokens[curr];
+
+    String8 str = (String8){
+        p->src.str + start_tok.start,
+        end_tok.end - start_tok.start,
+    };
+
+    return str;
+}
+
+void parser_error(Parser *p, const char *fmt, ...) {
+    fprintf(stderr, "%.*s: line:%lu \x1b[31mError\x1b[0m: ", str8_varg(p->filename), p->line);
+
+    va_list args;
+    va_start(args, fmt);
+
+    vfprintf(stderr, fmt, args);
+
+
+    va_end(args);
+
+    String8 line_str = parser_get_curr_line_str8(p);
+    fprintf(stderr, "\n\t%lu |\t%.*s\n", p->line, str8_varg(line_str));
+}
 
 SeaDataType *parse_type(Parser *p) {
     local_persist SeaDataType int32t = (SeaDataType){SeaDataKind_I32};
@@ -76,7 +123,8 @@ SeaDataType *parse_type(Parser *p) {
 
         default: {
             // TODO better errors
-            fprintf(stderr, "Could not parse type");
+            fprintf(stderr, "Could not parse type '%.*s'", str8_varg(token_string(p, tok)));
+            advance_token(p);
         } break;
     }
 
@@ -96,6 +144,15 @@ SeaNode *parse_urnary(Parser *p, SeaFunctionGraph *fn) {
             n = sea_create_const_int(fn, v);
         } break;
 
+        case TokenKind_Identifier: {
+            String8 name = token_string(p, tok);
+            SeaNode *var = sea_lookup_local_symbol(fn, name);
+            if (!var) {
+                parser_error(p, "in the expression the symbol '%.*s' is not defined.", str8_varg(name));
+            }
+            n = var;
+        } break;
+
         case TokenKind_Minus: {
             advance_token(p);
             SeaNode *input = parse_urnary(p, fn);
@@ -109,9 +166,8 @@ SeaNode *parse_urnary(Parser *p, SeaFunctionGraph *fn) {
         } break;
 
         default: {
-            // TODO error
             String8 str = token_string(p, tok);
-            fprintf(stderr, "Error '%.*s' is not a valid urnary (%d).\n", str8_varg(str), tok.kind);
+            parser_error(p, "Error '%.*s' is not a valid urnary (%d).\n", str8_varg(str), tok.kind);
         } break;
     }
 
@@ -166,20 +222,138 @@ SeaNode *parse_expr(Parser *p, SeaFunctionGraph *fn) {
     return parse_bin_expr(p, fn, lhs, 0);
 }
 
+void parse_if(Parser *p, SeaFunctionGraph *fn) {
+    advance_token(p);
+
+    Token tok = current_token(p);
+    if (tok.kind != TokenKind_LParen) {
+        parser_error(p, "expected a '('.");
+    }
+
+    advance_token(p);
+    SeaNode *expr = parse_expr(p, fn);
+
+    tok = current_token(p);
+    if (tok.kind != TokenKind_RParen) {
+        parser_error(p, "expected a ')'.");
+    }
+
+
+    // TODO find out why this returns 0
+    SeaNode *prev_ctrl = sea_lookup_local_symbol(fn, CTRL_STR);
+
+    SeaNode *ifnode =   sea_create_if(fn, prev_ctrl);
+    SeaNode *fnode =    sea_create_proj(fn, ifnode, 0);
+    SeaNode *tnode =    sea_create_proj(fn, ifnode, 1);
+
+    SeaNode *tscope = fn->scope;
+    SeaNode *fscope = sea_duplicate_scope(fn, tscope);
+
+    sea_scope_insert_symbol(fn, tscope, CTRL_STR, tnode);
+    sea_scope_insert_symbol(fn, fscope, CTRL_STR, fnode);
+
+
+    advance_token(p);
+    skip_newlines(p);
+
+    tok = current_token(p);
+    if (tok.kind == TokenKind_LBrace) {
+        parse_block(p, fn);
+    }
+
+    // Parse the false case
+    fn->scope = fscope;
+
+    skip_newlines(p);
+    tok = current_token(p);
+    if (tok.kind == TokenKind_Else) {
+        advance_token(p);
+        tok = current_token(p);
+        if (tok.kind == TokenKind_LBrace) {
+            parse_block(p, fn);
+        } else if (tok.kind == TokenKind_If) {
+            parse_if(p, fn);
+        } else {
+            fprintf(stderr, "Bruh.\n");
+        }
+    }
+
+    SeaNode *region = sea_create_region_for_if(fn, fnode, tnode, 8);
+    fn->scope = sea_merge_scopes(fn, region, fscope, tscope);
+
+    sea_insert_local_symbol(fn, CTRL_STR, region);
+
+}
+
+void parse_local_decl(Parser *p, SeaFunctionGraph *fn) {
+    skip_newlines(p);
+    SeaDataType *t = parse_type(p);
+    Token tok = current_token(p);
+    String8 name = token_string(p, tok);
+
+    advance_token(p);
+    tok = current_token(p);
+
+    if (tok.kind == TokenKind_Equals) {
+        advance_token(p);
+        SeaNode *expr = parse_expr(p, fn);
+        // TODO Replace with a real function
+        // if (t->kind !=  expr->type->kind) {
+        //     // Error
+        //     fprintf(stderr, "Error: Type Mismatch");
+        // }
+
+        sea_insert_local_symbol(fn, name, expr);
+    } else {
+        // TODO top
+    }
+
+}
+
 void parse_stmt(Parser *p, SeaFunctionGraph *fn) {
     Token tok = current_token(p);
-    advance_token(p);
     switch (tok.kind) {
+        case TokenKind_LBrace: {
+            parse_block(p, fn);
+        } break;
         case TokenKind_Return: {
+            advance_token(p);
             SeaNode *expr = parse_expr(p, fn);
             // TODO add control stuff (FIXXX)
             printf("%.*s() = %lld\n", str8_varg(fn->proto.name), expr->vint);
             SeaNode *ret = sea_create_return(fn, fn->start, expr);
         } break;
+        case TokenKind_Identifier: {
+            // TODO see if its a user defined type
+            String8 name = token_string(p, tok);
+            SeaNode *n = sea_lookup_local_symbol(fn, name);
+            if (!n) {
+                String8 name = token_string(p, tok);
+                parser_error(p, "symbol '%.*s' is not defined in scope.", str8_varg(name));
+            }
 
+            advance_token(p);
+            tok = current_token(p);
+            if (tok.kind == TokenKind_Equals) {
+                advance_token(p);
+                SeaNode *expr = parse_expr(p, fn);
+                if (n) sea_update_local_symbol(fn, name, expr);
+            }
+
+        } break;
+        case TokenKind_If: {
+            parse_if(p, fn);
+        } break;
+
+        case TokenKind_Int: {
+            parse_local_decl(p, fn);
+        } break;
         default: {
             // TODO error
-        }
+            String8 name = token_string(p, tok);
+            fprintf(stderr, "Error: unkown token '%.*s' while parsing statement.\n", str8_varg(name));
+            advance_token(p);
+        } break;
     }
 }
 
@@ -188,18 +362,20 @@ void parse_block(Parser *p, SeaFunctionGraph *fn) {
     advance_token(p);
     skip_newlines(p);
 
+    sea_push_new_scope(fn);
+
+
     Token tok = current_token(p);
     while ((p->curr < p->tok_count) && (tok.kind != TokenKind_RBrace)) {
         parse_stmt(p, fn);
         skip_newlines(p);
         tok = current_token(p);
-
-        String8 trk = token_string(p, tok);
-        // printf("%.*s\n", trk);
     }
 
     advance_token(p);
+    sea_pop_this_scope(fn);
 }
+
 
 void parse_func(Parser *p) {
     advance_token(p);
@@ -213,6 +389,8 @@ void parse_func(Parser *p) {
 
     String8 name = token_string(p, name_tok);
     advance_token(p);
+
+    printf("Parsing: %.*s\n", str8_varg(name));
 
     Token tok = current_token(p);
     if (tok.kind != TokenKind_LParen) {
@@ -281,18 +459,17 @@ void parse_func(Parser *p) {
     }
 }
 
+
 void parse_decl(Parser *p) {
 
-    skip_newlines(p);
 
     Token tok = current_token(p);
-
     switch (tok.kind) {
         case TokenKind_Fn: {
+        default: {
             parse_func(p);
         } break;
-        default: {
-            String8 str = str8_tok(p->src, tok);
+            String8 str = token_string(p, tok);
             printf("Error: Did not expect '%.*s' (%d) in %.*s.\n", str8_varg(str), tok.kind, str8_varg(p->filename));
         } break;
     }
@@ -300,10 +477,12 @@ void parse_decl(Parser *p) {
 
 void parse_decls(Parser *p) {
     while (p->curr < p->tok_count) {
+        skip_newlines(p);
         Token tok = current_token(p);
         if (tok.kind == TokenKind_EOF) {
             return;
         }
+
         parse_decl(p);
     }
 }
@@ -344,5 +523,5 @@ void module_add_file_and_parse(Module *m, String8 filename) {
         .curr = 0,
     };
 
-    parse_decl(&p);
+    parse_decls(&p);
 }

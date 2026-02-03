@@ -1,6 +1,5 @@
 #include <sea/sea.h>
 
-
 void sea_node_print_expr_debug(SeaNode *expr) {
     switch (expr->kind) {
         case SeaNodeKind_Return: printf("return "); sea_node_print_expr_debug(expr->inputs[1]); break;
@@ -182,8 +181,8 @@ U16 sea_node_append_input(SeaFunctionGraph *fn, SeaNode *node, SeaNode *input) {
         sea_node_alloc_inputs(fn, node, 4);
     }
 
-    if (node->userlen >= node->usercap) {
-        U16 newcap = node->usercap * 2;
+    if (node->inputlen >= node->inputcap) {
+        U16 newcap = node->inputcap * 2;
         SeaNode **new_inputs = push_array(fn->arena, SeaNode*, newcap);
         MemoryCopyTyped(new_inputs, node->inputs,node->inputlen);
         node->inputs = new_inputs;
@@ -200,6 +199,16 @@ U16 sea_node_append_input(SeaFunctionGraph *fn, SeaNode *node, SeaNode *input) {
     return slot;
 }
 
+void sea_node_remove_user_slot(SeaNode *node, U16 slot) {
+    assert(slot <= node->userlen);
+
+    if ((slot < node->userlen - 1) && (slot > 0)) {
+        MemoryCopyStruct(&node->users[slot], &node->users[node->userlen - 1]);
+    }
+
+    node->userlen -= 1;
+}
+
 void sea_node_remove_user(SeaNode *node, SeaNode *user) {
     // unordered remove
     // TODO is the slot in user the pint in the
@@ -208,20 +217,16 @@ void sea_node_remove_user(SeaNode *node, SeaNode *user) {
         if (node->users[slot].n == node) break;
     }
 
-    if (slot >= node->userlen)  {
-        // TODO BIG ERROR NODE DOES NOT HAVE THIS USER
-        assert(0);
-    }
-
-    if (slot < node->userlen - 1) {
-        MemoryCopyStruct(&node->users[slot], &node->users[node->userlen - 1]);
-    }
-
-    node->userlen -= 1;
+    sea_node_remove_user_slot(node, slot);
 }
 
 void sea_node_set_input(SeaFunctionGraph *fn, SeaNode *node, SeaNode *input, U16 slot) {
     assert(slot < node->inputcap);
+
+    if (node->inputs[slot]) {
+        sea_node_remove_user(node->inputs[slot], node);
+    }
+
     node->inputlen = (node->inputlen > slot) ? node->inputlen : slot + 1; // this bad boy cause a big bug love those off by one errors
     node->inputs[slot] = input;
     if (input) {
@@ -442,8 +447,12 @@ SeaNode *sea_create_binary_expr(
     SeaNode *lhs,
     SeaNode *rhs
 ) {
+
+    // SeaDataType *t = sea_meet_type(lhs->type, rhs->type);
+
     SeaNode n = {
         .kind = kind,
+        // .type = t,
     };
     sea_node_alloc_inputs(fn, &n, 2);
     sea_node_set_input(fn, &n, lhs, 0);

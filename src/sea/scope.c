@@ -20,7 +20,6 @@ SeaNode *sea_alloc_scope_with_cap(SeaFunctionGraph *fn, U64 cap) {
 }
 
 void sea_scope_insert_symbol(SeaFunctionGraph *fn, SeaNode *scope, String8 name, SeaNode *node) {
-    SeaScopeManager *m = &fn->mscope;
     SeaScopeNode *scopedata = scope->vptr;
 
 
@@ -59,29 +58,51 @@ void sea_insert_local_symbol(SeaFunctionGraph *fn, String8 name, SeaNode *node) 
     return sea_scope_insert_symbol(fn, fn->scope, name, node);
 }
 
-
-SeaScopeSymbolCell *sea_scope_lookup_symbol_cell(SeaNode *scope, String8 name) {
+// TODO we need to update the slot instead
+SeaNode *sea_scope_lookup_symbol(SeaFunctionGraph *fn, SeaNode *scope, String8 name) {
     SeaScopeNode *scopedata = scope->vptr;
     U64 slotidx = u64_hash_from_str8(name) %scopedata->cap;
     SeaScopeSymbolCell **cell = &scopedata->cells[slotidx];
     while (*cell) {
         // if its already in the table update it.
         if (str8_match((*cell)->name, name, 0)) {
-            return (*cell);
+            return scope->inputs[(*cell)->slot];
         }
 
         cell = &(*cell)->hash_next;
     }
 
-    if (scopedata->prev) return sea_scope_lookup_symbol_cell(scopedata->prev, name);
+    if (scopedata->prev) return sea_scope_lookup_symbol(fn, scopedata->prev, name);
 
     return 0;
 }
 
 
-SeaNode *sea_scope_lookup_symbol(SeaFunctionGraph *fn, String8 name) {
-    SeaScopeSymbolCell *cell = sea_scope_lookup_symbol_cell(fn->scope, name);
-    return fn->scope->inputs[cell->slot];
+void sea_scope_update_symbol(SeaFunctionGraph *fn, SeaNode *scope, String8 name, SeaNode *node) {
+
+    while (scope) {
+        SeaScopeNode *scopedata = scope->vptr;
+        U64 slotidx = u64_hash_from_str8(name) %scopedata->cap;
+        SeaScopeSymbolCell **cell = &scopedata->cells[slotidx];
+        while (*cell) {
+            if (str8_match((*cell)->name, name, 0)) {
+                sea_node_set_input(fn, scope, node, (*cell)->slot);
+            }
+
+            cell = &(*cell)->hash_next;
+        }
+        scope = scopedata->prev;
+    }
+}
+
+void sea_update_local_symbol(SeaFunctionGraph *fn, String8 name, SeaNode *node) {
+    sea_scope_update_symbol(fn, fn->scope, name, node);
+}
+
+
+
+SeaNode *sea_lookup_local_symbol(SeaFunctionGraph *fn, String8 name) {
+    return sea_scope_lookup_symbol(fn, fn->scope, name);
 }
 
 
@@ -167,4 +188,45 @@ void sea_pop_scope(SeaFunctionGraph *fn, SeaNode *scope) {
     scopedata->prev = m->scopepool;
     m->scopepool = scope;
 
+}
+
+// TODO return region rather than scope
+SeaNode *sea_merge_scopes(
+    SeaFunctionGraph *fn,
+    SeaNode *region,
+    SeaNode *this_scope,
+    SeaNode *that_scope
+) {
+    SeaScopeNode *this = this_scope->vptr;
+    SeaScopeNode *that = that_scope->vptr;
+
+    SeaScopeSymbolCell *cell = this->head;
+    while (cell) {
+        if (!str8_match(cell->name, CTRL_STR, 0)) {
+            SeaNode *this_node = this_scope->inputs[cell->slot];
+            SeaNode *that_node = sea_scope_lookup_symbol(fn, that_scope, cell->name);
+
+            if (this_node != that_node) {
+                // create phi
+                SeaNode *phi = sea_create_phi2(fn, region, this_node, that_node);
+                printf("Mergin: %.*s\n", str8_varg(cell->name));
+                sea_scope_update_symbol(fn, this_scope, cell->name, phi);
+            }
+        }
+
+
+        cell = cell->next;
+    }
+
+    if (this->prev) {
+        sea_merge_scopes(fn, region, this->prev, that->prev);
+    }
+
+
+    return this_scope;
+}
+
+
+void sea_pop_this_scope(SeaFunctionGraph *fn) {
+    sea_pop_scope(fn, fn->scope);
 }

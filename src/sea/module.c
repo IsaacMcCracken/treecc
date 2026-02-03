@@ -73,12 +73,17 @@ SeaFunctionGraph *sea_add_function(SeaModule *m, SeaFunctionProto proto) {
     fn->arena = arena;
 
     sea_push_new_scope(fn);
+    sea_insert_local_symbol(fn, CTRL_STR, start);
 
     for EachIndex(i, proto.args.count) {
         SeaNode *arg_node = sea_create_proj(fn, fn->start, i);
         arg_node->type = proto.args.fields[i].type;
         sea_insert_local_symbol(fn, proto.args.fields[i].name, arg_node);
     }
+
+    // for EachNode(n, SeaScopeSymbolCell, ((SeaScopeNode*)fn->scope->vptr)->head) {
+    //     printf("%.*s\n", n->name);
+    // }
 
 
 

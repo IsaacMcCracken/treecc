@@ -237,6 +237,9 @@ Token *tokenize(Arena *arena, U32 *token_count, String8 src) {
         }
     }
 
+
+    append_token(arena, TokenKind_EOF, src.size, src.size, &count);
+
     *token_count = count;
     return tokens;
 }

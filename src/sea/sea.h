@@ -2,15 +2,19 @@
 #define SEA_NODE_H
 #include <base/base_inc.h>
 
+#define CTRL_STR str8_lit("@ctrl")
+
 typedef U8 SeaDataKind;
 enum {
+  SeaDataKind_Top,
+
   SeaDataKind_I32,
   SeaDataKind_I64,
   SeaDataKind_Control,
   SeaDataKind_DeadControl,
   SeaDataKind_Mem,
-  SeaDataKind_Top,
   SeaDataKind_Bottom,
+  SeaDataKind_COUNT,
 };
 
 typedef struct SeaDataType SeaDataType;
@@ -236,9 +240,12 @@ SeaNode *sea_create_phi2(SeaFunctionGraph *fn, SeaNode *region, SeaNode *a, SeaN
 
 void sea_push_new_scope(SeaFunctionGraph *fn);
 void sea_pop_scope(SeaFunctionGraph *fn, SeaNode *scope);
+void sea_pop_this_scope(SeaFunctionGraph *fn);
 void sea_free_all_scopes(SeaFunctionGraph *fn, SeaNode *scope);
 SeaNode *sea_duplicate_scope(SeaFunctionGraph *fn, SeaNode *original);
 void sea_scope_insert_symbol(SeaFunctionGraph *fn, SeaNode *scope, String8 name, SeaNode *node);
+void sea_update_local_symbol(SeaFunctionGraph *fn, String8 name, SeaNode *node);
 void sea_insert_local_symbol(SeaFunctionGraph *fn, String8 name, SeaNode *node);
-
+SeaNode *sea_lookup_local_symbol(SeaFunctionGraph *fn, String8 name);
+SeaNode *sea_merge_scopes(SeaFunctionGraph *fn, SeaNode *region, SeaNode *this_scope, SeaNode *that_scope);
 #endif
