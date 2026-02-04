@@ -11,11 +11,9 @@ Token current_token(Parser *p) {
 }
 
 Token peek_token_n(Parser *p, U32 n) {
-    if (p->curr + n < p->tok_count) {
-        return p->tokens[p->curr + n];
-    }
+    U32 idx = Min(p->tok_count - 1, p->curr + n);
 
-    return (Token){.kind = TokenKind_EOF};
+    return p->tokens[idx];
 }
 
 Token peek_token_next(Parser *p) {
