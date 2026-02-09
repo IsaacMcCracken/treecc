@@ -4,7 +4,7 @@
 
 void parse_stmt(Parser *p, SeaFunctionGraph *fn);
 void parse_block(Parser *p, SeaFunctionGraph *fn);
-
+SeaType *parse_type(Parser *p);
 
 Token current_token(Parser *p) {
     return p->tokens[p->curr];
@@ -105,18 +105,16 @@ void parser_error(Parser *p, const char *fmt, ...) {
     fprintf(stderr, "\n\t%lu |\t%.*s\n", p->line, str8_varg(line_str));
 }
 
-SeaDataType *parse_type(Parser *p) {
-    local_persist SeaDataType int32t = (SeaDataType){SeaDataKind_I32};
-
+SeaType *parse_type(Parser *p) {
     skip_newlines(p);
 
     Token tok = current_token(p);
 
-    SeaDataType *t = 0;
+    SeaType *t = 0;
     switch (tok.kind) {
         case TokenKind_Int: {
             advance_token(p);
-            return &int32t;
+            return &sea_type_S64;
         } break;
 
         default: {
@@ -154,13 +152,13 @@ SeaNode *parse_urnary(Parser *p, SeaFunctionGraph *fn) {
         case TokenKind_Minus: {
             advance_token(p);
             SeaNode *input = parse_urnary(p, fn);
-            n = sea_create_urnary_expr(fn, SeaNodeKind_NegateI, input);
+            n = sea_create_urnary_op(fn, SeaNodeKind_NegateI, input);
         } break;
 
         case TokenKind_LogicNot: {
             advance_token(p);
             SeaNode *input = parse_urnary(p, fn);
-            n = sea_create_urnary_expr(fn, SeaNodeKind_Not, input);
+            n = sea_create_urnary_op(fn, SeaNodeKind_Not, input);
         } break;
 
         default: {
@@ -208,7 +206,7 @@ SeaNode *parse_bin_expr(
                 break;
         }
 
-        SeaNode *opnode = sea_create_binary_expr(fn, opkind, lhs, rhs);
+        SeaNode *opnode = sea_create_bin_op(fn, opkind, lhs, rhs);
         lhs = opnode;
     }
 
@@ -240,7 +238,7 @@ void parse_if(Parser *p, SeaFunctionGraph *fn) {
     // TODO find out why this returns 0
     SeaNode *prev_ctrl = sea_lookup_local_symbol(fn, CTRL_STR);
 
-    SeaNode *ifnode =   sea_create_if(fn, prev_ctrl);
+    SeaNode *ifnode =   sea_create_if(fn, prev_ctrl, expr);
     SeaNode *fnode =    sea_create_proj(fn, ifnode, 0);
     SeaNode *tnode =    sea_create_proj(fn, ifnode, 1);
 
@@ -272,12 +270,12 @@ void parse_if(Parser *p, SeaFunctionGraph *fn) {
         } else if (tok.kind == TokenKind_If) {
             parse_if(p, fn);
         } else {
-            fprintf(stderr, "Bruh.\n");
+            String8 name = token_string(p, tok);
+            parser_error(p, "Expected 'if' or '{' got %.*s.", str8_varg(name));
         }
     }
 
-    SeaNode *region = sea_create_region_for_if(fn, fnode, tnode, 8);
-    fn->scope = sea_merge_scopes(fn, region, fscope, tscope);
+    SeaNode *region = sea_merge_scopes(fn, fscope, tscope, &fn->scope);
 
     sea_insert_local_symbol(fn, CTRL_STR, region);
 
@@ -285,7 +283,7 @@ void parse_if(Parser *p, SeaFunctionGraph *fn) {
 
 void parse_local_decl(Parser *p, SeaFunctionGraph *fn) {
     skip_newlines(p);
-    SeaDataType *t = parse_type(p);
+    SeaType *t = parse_type(p);
     Token tok = current_token(p);
     String8 name = token_string(p, tok);
 
@@ -363,6 +361,7 @@ void parse_block(Parser *p, SeaFunctionGraph *fn) {
     sea_push_new_scope(fn);
 
 
+
     Token tok = current_token(p);
     while ((p->curr < p->tok_count) && (tok.kind != TokenKind_RBrace)) {
         parse_stmt(p, fn);
@@ -377,7 +376,7 @@ void parse_block(Parser *p, SeaFunctionGraph *fn) {
 
 void parse_func(Parser *p) {
     advance_token(p);
-    SeaDataType *return_type = parse_type(p);
+    SeaType *return_type = parse_type(p);
 
     Token name_tok = current_token(p);
 
@@ -407,7 +406,7 @@ void parse_func(Parser *p) {
     U64 field_count = 0;
 
     while (tok.kind != TokenKind_RParen) {
-        SeaDataType *t = parse_type(p);
+        SeaType *t = parse_type(p);
         skip_newlines(p);
         tok = current_token(p);
 

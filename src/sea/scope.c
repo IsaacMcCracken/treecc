@@ -87,6 +87,7 @@ void sea_scope_update_symbol(SeaFunctionGraph *fn, SeaNode *scope, String8 name,
         while (*cell) {
             if (str8_match((*cell)->name, name, 0)) {
                 sea_node_set_input(fn, scope, node, (*cell)->slot);
+                return;
             }
 
             cell = &(*cell)->hash_next;
@@ -147,6 +148,7 @@ void sea_push_new_scope(SeaFunctionGraph *fn) {
         // zero everything else
         scopedata->head = 0;
         scopedata->tail = 0;
+        scopedata->depth = 0;
         scopedata->symbol_count = 0;
         MemoryZero(scopedata->cells, sizeof(SeaScopeSymbolCell*) * scopedata->cap);
         scope = n;
@@ -157,6 +159,18 @@ void sea_push_new_scope(SeaFunctionGraph *fn) {
 
     SeaScopeNode *scopedata = scope->vptr;
     scopedata->prev = fn->scope;
+
+    if (scopedata->prev) {
+        SeaScopeNode *prevscopedata = scopedata->prev->vptr;
+        scopedata->depth = prevscopedata->depth + 1;
+        printf("Scope(%p) depth of %llu\n", scope);
+    }
+
+    if (fn->scope) {
+        SeaNode *prev_ctrl = sea_scope_lookup_symbol(fn, fn->scope, CTRL_STR);
+        sea_scope_insert_symbol(fn, scope, CTRL_STR, prev_ctrl);
+    }
+
     fn->scope = scope;
 }
 
@@ -190,40 +204,74 @@ void sea_pop_scope(SeaFunctionGraph *fn, SeaNode *scope) {
 
 }
 
-// TODO return region rather than scope
+/**
+ * Merges that_scope into this_scope returns a new region
+ */
 SeaNode *sea_merge_scopes(
     SeaFunctionGraph *fn,
-    SeaNode *region,
     SeaNode *this_scope,
-    SeaNode *that_scope
+    SeaNode *that_scope,
+    SeaNode **out_scope
 ) {
-    SeaScopeNode *this = this_scope->vptr;
-    SeaScopeNode *that = that_scope->vptr;
 
-    SeaScopeSymbolCell *cell = this->head;
-    while (cell) {
-        if (!str8_match(cell->name, CTRL_STR, 0)) {
-            SeaNode *this_node = this_scope->inputs[cell->slot];
-            SeaNode *that_node = sea_scope_lookup_symbol(fn, that_scope, cell->name);
 
-            if (this_node != that_node) {
-                // create phi
-                SeaNode *phi = sea_create_phi2(fn, region, this_node, that_node);
-                printf("Mergin: %.*s\n", str8_varg(cell->name));
-                sea_scope_update_symbol(fn, this_scope, cell->name, phi);
+    SeaNode *this_ctrl = sea_scope_lookup_symbol(fn, this_scope, CTRL_STR);
+    SeaNode *that_ctrl = sea_scope_lookup_symbol(fn, that_scope, CTRL_STR);
+
+    if (this_ctrl->type == &sea_type_CtrlDead) {
+        SeaNode *ifnode = that_ctrl->inputs[0];
+        Assert(ifnode->kind == SeaNodeKind_If);
+        SeaNode *valid_ctrl = ifnode->inputs[0];
+        Assert(valid_ctrl->type == &sea_type_CtrlLive);
+        sea_free_all_scopes(fn, this_scope);
+        *out_scope = that_scope;
+        return valid_ctrl;
+    }
+
+    if (that_ctrl->type == &sea_type_CtrlDead) {
+        SeaNode *ifnode = this_ctrl->inputs[0];
+        Assert(ifnode->kind == SeaNodeKind_If);
+        SeaNode *valid_ctrl = ifnode->inputs[0];
+        Assert(valid_ctrl->type == &sea_type_CtrlLive);
+        sea_free_all_scopes(fn, that_scope);
+        *out_scope = this_scope;
+        return valid_ctrl;
+    }
+
+
+
+    SeaNode *ctrl_ins[2] = {this_ctrl, that_ctrl};
+    SeaNode *region = sea_create_region(fn, ctrl_ins, 2, 8);
+
+    while (this_scope && that_scope) {
+
+        SeaScopeNode *this = this_scope->vptr;
+        SeaScopeNode *that = that_scope->vptr;
+
+        SeaScopeSymbolCell *cell = this->head;
+        while (cell) {
+            if (!str8_match(cell->name, CTRL_STR, 0)) {
+                SeaNode *this_node = this_scope->inputs[cell->slot];
+                SeaNode *that_node = sea_scope_lookup_symbol(fn, that_scope, cell->name);
+
+                if (this_node != that_node) {
+                    // create phi
+                    SeaNode *phi = sea_create_phi2(fn, region, this_node, that_node);
+                    // printf("Mergin: %.*s\n", str8_varg(cell->name));
+                    sea_scope_update_symbol(fn, this_scope, cell->name, phi);
+                }
             }
+
+
+            cell = cell->next;
         }
 
-
-        cell = cell->next;
-    }
-
-    if (this->prev) {
-        sea_merge_scopes(fn, region, this->prev, that->prev);
+        this_scope = this->prev;
+        that_scope = that->prev;
     }
 
 
-    return this_scope;
+    return region;
 }
 
 

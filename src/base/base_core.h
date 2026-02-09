@@ -191,6 +191,7 @@
 #define DeferLoopChecked(begin, end) for(int _i_ = 2 * !(begin); (_i_ == 2 ? ((end), 0) : !_i_); _i_ += 1, (end))
 
 #define EachIndex(it, count) (U64 it = 0; it < (count); it += 1)
+#define EachIndexFrom(it, start, count) (U64 it = (start); it < (count); it += 1)
 #define EachElement(it, array) (U64 it = 0; it < ArrayCount(array); it += 1)
 #define EachEnumVal(type, it) (type it = (type)0; it < type##_COUNT; it = (type)(it+1))
 #define EachNonZeroEnumVal(type, it) (type it = (type)1; it < type##_COUNT; it = (type)(it+1))
@@ -218,6 +219,7 @@
 #define MemoryMatch(a,b,z)     (MemoryCompare((a),(b),(z)) == 0)
 #define MemoryMatchStruct(a,b)  MemoryMatch((a),(b),sizeof(*(a)))
 #define MemoryMatchArray(a,b)   MemoryMatch((a),(b),sizeof(a))
+#define MemoryMatchTyped(a, b, c) MemoryMatch((a), (b), sizeof(*(a))*(c))
 
 #define MemoryIsZeroStruct(ptr) memory_is_zero((ptr), sizeof(*(ptr)))
 
@@ -692,20 +694,18 @@ global F32 pi32 = 3.1415926535897f;
 
 global F64 machine_epsilon64 = 4.94065645841247e-324;
 
-global U64 max_U64 = 0xffffffffffffffffull;
-global U32 max_U32 = 0xffffffff;
-global U16 max_U16 = 0xffff;
-global U8  max_U8  = 0xff;
-
-global S64 max_S64 = (S64)0x7fffffffffffffffll;
-global S32 max_S32 = (S32)0x7fffffff;
-global S16 max_S16 = (S16)0x7fff;
-global S8  max_S8  =  (S8)0x7f;
-
-global S64 min_S64 = (S64)0x8000000000000000ll;
-global S32 min_S32 = (S32)0x80000000;
-global S16 min_S16 = (S16)0x8000;
-global S8  min_S8  =  (S8)0x80;
+#define max_U64 0xffffffffffffffffull
+#define max_U32 0xffffffff
+#define max_U16 0xffff
+#define max_U8  0xff
+#define max_S64 (S64)0x7fffffffffffffffll
+#define max_S32 (S32)0x7fffffff
+#define max_S16 (S16)0x7fff
+#define max_S8  (S8)0x7f
+#define min_S64 (S64)0x8000000000000000ll
+#define min_S32 (S32)0x80000000
+#define min_S16 (S16)0x8000
+#define min_S8  (S8)0x80
 
 global const U32 bitmask1  = 0x00000001;
 global const U32 bitmask2  = 0x00000003;

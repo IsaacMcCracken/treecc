@@ -46,7 +46,5 @@ void frontend_deinit();
 
 
 void module_add_file_and_parse(Module *m, String8 filename);
-Token current_token(Parser *p);
-SeaDataType *parse_type(Parser *p);
 
 #endif // TREE_FRONT_H

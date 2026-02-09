@@ -1,4 +1,6 @@
 #include <sea/sea.h>
+#include <sea/sea_internal.h>
+
 
 SeaModule sea_create_module(void) {
     // TODO create symbol table
@@ -54,40 +56,28 @@ void sea_add_function_symbol(SeaModule *m, SeaFunctionProto proto) {
 SeaFunctionGraph *sea_add_function(SeaModule *m, SeaFunctionProto proto) {
     Arena *arena = arena_alloc(MB(1)); // TODO heuristic for how much
 
+    // This code is ugly as fuck;
+
     // Yippee
     SeaFunctionGraphNode *fn_node = push_item(arena, SeaFunctionGraphNode);
     SeaFunctionGraph *fn = &fn_node->fn;
-    fn->proto = proto;
-    fn->m = m;
-    fn->mscope.default_cap = 61;
 
-    fn->map = sea_map_init(arena, 101);
+    // Set intenals
+    {
+        fn->proto = proto;
+        fn->m = m;
+        fn->arena = arena;
+        fn->mscope.default_cap = 61;
+        fn->map = sea_map_init(arena, 101);
 
-    SeaNode *start = push_item(arena, SeaNode);
-    start->kind = SeaNodeKind_Start;
-    SeaNode *stop = push_item(arena, SeaNode);
-    stop->kind = SeaNodeKind_Stop;
-
-    fn->start = start;
-    fn->stop = stop;
-    fn->arena = arena;
-
-    sea_push_new_scope(fn);
-    sea_insert_local_symbol(fn, CTRL_STR, start);
-
-    for EachIndex(i, proto.args.count) {
-        SeaNode *arg_node = sea_create_proj(fn, fn->start, i);
-        arg_node->type = proto.args.fields[i].type;
-        sea_insert_local_symbol(fn, proto.args.fields[i].name, arg_node);
+        sea_lattice_init(fn);
+        sea_push_new_scope(fn);
+        fn->start = sea_create_start(fn, proto);
+        fn->stop = sea_create_stop(fn, 4);
     }
 
-    // for EachNode(n, SeaScopeSymbolCell, ((SeaScopeNode*)fn->scope->vptr)->head) {
-    //     printf("%.*s\n", n->name);
-    // }
 
-
-
-
+    // add the function to the module list
     {
         rw_mutex_take(m->lock, 1);
 

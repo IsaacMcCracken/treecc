@@ -1,9 +1,9 @@
-#include <sea/sea.h>
+#include "sea_internal.h"
 
 void sea_node_print_expr_debug(SeaNode *expr) {
     switch (expr->kind) {
         case SeaNodeKind_Return: printf("return "); sea_node_print_expr_debug(expr->inputs[1]); break;
-        case SeaNodeKind_ConstInt: printf("%ld", expr->vint); break;
+        case SeaNodeKind_Const: printf("%ld", expr->vint); break;
         case SeaNodeKind_Proj: printf("arg%ld", expr->vint); break;
         case SeaNodeKind_AddI: {
             putchar('(');
@@ -250,16 +250,16 @@ SeaNode *sea_node_register(SeaFunctionGraph *fn, SeaNode *node) {
 
 SeaNode *sea_peepint(SeaFunctionGraph *fn, SeaNode *node) {
     // constfold urnary expression
-    if (node->kind == SeaNodeKind_NegateI && (node->inputs[0]->kind == SeaNodeKind_ConstInt)) {
+    if (node->kind == SeaNodeKind_NegateI && (node->inputs[0]->kind == SeaNodeKind_Const)) {
         return sea_create_const_int(fn, -node->inputs[0]->vint);
-    } else  if (node->kind == SeaNodeKind_Not && node->inputs[0]->kind == SeaNodeKind_ConstInt) {
+    } else  if (node->kind == SeaNodeKind_Not && node->inputs[0]->kind == SeaNodeKind_Const) {
         return sea_create_const_int(fn, !node->inputs[0]->vint);
     }
 
     SeaNode *lhs = node->inputs[0];
     SeaNode *rhs = node->inputs[1];
     // Constfold binary expression
-    if (lhs->kind == SeaNodeKind_ConstInt && rhs->kind == SeaNodeKind_ConstInt) {
+    if (lhs->kind == SeaNodeKind_Const && rhs->kind == SeaNodeKind_Const) {
         S64 v = 0;
         switch (node->kind) {
             case SeaNodeKind_EqualI: {
@@ -301,16 +301,16 @@ SeaNode *sea_peepint(SeaFunctionGraph *fn, SeaNode *node) {
 
         // if 2 * x -> x * 2  or 2 * (x * 4) -> (x * 4) * 2
         // swap sides because of communtivity
-        if (lhs->kind == SeaNodeKind_ConstInt && rhs->kind != SeaNodeKind_ConstInt) {
-            return sea_create_binary_expr(fn, node->kind, rhs, lhs);
+        if (lhs->kind == SeaNodeKind_Const && rhs->kind != SeaNodeKind_Const) {
+            return sea_create_bin_op(fn, node->kind, rhs, lhs);
         }
 
 
         // (x * 4) * 2 -> x * (4 * 2)
         // constant propagation
-        if (lhs->kind == node->kind && lhs->inputs[1]->kind == SeaNodeKind_ConstInt) {
-            SeaNode *new_rhs = sea_create_binary_expr(fn, node->kind, lhs->inputs[1], rhs);
-            SeaNode *new_expr = sea_create_binary_expr(fn, node->kind, lhs->inputs[0], new_rhs);
+        if (lhs->kind == node->kind && lhs->inputs[1]->kind == SeaNodeKind_Const) {
+            SeaNode *new_rhs = sea_create_bin_op(fn, node->kind, lhs->inputs[1], rhs);
+            SeaNode *new_expr = sea_create_bin_op(fn, node->kind, lhs->inputs[0], new_rhs);
             return new_expr;
         }
 
@@ -320,10 +320,10 @@ SeaNode *sea_peepint(SeaFunctionGraph *fn, SeaNode *node) {
     if (node->kind == SeaNodeKind_AddI && rhs == lhs) {
         if (lhs == rhs) {
             SeaNode *two = sea_create_const_int(fn, 2);
-            return sea_create_binary_expr(fn, SeaNodeKind_MulI, lhs, two);
+            return sea_create_bin_op(fn, SeaNodeKind_MulI, lhs, two);
         }
 
-        if (rhs->kind == SeaNodeKind_ConstInt && rhs->vint == 0) return lhs;
+        if (rhs->kind == SeaNodeKind_Const && rhs->vint == 0) return lhs;
     }
 
     if (node->kind == SeaNodeKind_SubI && lhs == rhs) {
@@ -331,15 +331,18 @@ SeaNode *sea_peepint(SeaFunctionGraph *fn, SeaNode *node) {
         return zero;
     }
 
-    if (node->kind == SeaNodeKind_MulI && rhs->kind == SeaNodeKind_ConstInt && rhs->vint == 1) {
+    if (node->kind == SeaNodeKind_MulI && rhs->kind == SeaNodeKind_Const && rhs->vint == 1) {
         return lhs;
     }
 
     if (node->kind == SeaNodeKind_DivI) {
         if (lhs == rhs) return sea_create_const_int(fn, 1);
-        if (rhs->kind == SeaNodeKind_ConstInt && rhs->vint == 1) return lhs;
+        if (rhs->kind == SeaNodeKind_Const && rhs->vint == 1) return lhs;
     }
 
+    if (sea_type_is_const_int(node->type)) {
+        return sea_create_const_int(fn, sea_type_const_int_val(node->type));
+    }
 
     return node;
 }
@@ -385,6 +388,26 @@ SeaNode *sea_peepphi(SeaFunctionGraph *fn, SeaNode *node) {
     return node;
 }
 
+B32 sea_is_const(SeaNode *node) {
+    // TODO better type system
+    return node->kind == SeaNodeKind_Const;
+}
+
+SeaNode *sea_peepproj(SeaFunctionGraph *fn, SeaNode *node) {
+    SeaNode *prev = node->inputs[0];
+
+    switch (prev->kind) {
+        case SeaNodeKind_If: {
+            SeaNode *cond = prev->inputs[1];
+
+        } break;
+    }
+
+
+    return node;
+}
+
+
 SeaNode *sea_peephole(SeaFunctionGraph *fn, SeaNode *node) {
     node = sea_node_register(fn, node);
 
@@ -405,6 +428,10 @@ SeaNode *sea_peephole(SeaFunctionGraph *fn, SeaNode *node) {
             new = sea_peepint(fn, node);
         } break;
 
+        case SeaNodeKind_Proj: {
+            new = sea_peepproj(fn, node);
+        }
+
         case SeaNodeKind_Phi: {
             new = sea_peepphi(fn, node);
         } break;
@@ -423,14 +450,16 @@ SeaNode *sea_peephole(SeaFunctionGraph *fn, SeaNode *node) {
 
 SeaNode *sea_create_const_int(SeaFunctionGraph *fn, S64 v) {
     SeaNode n = (SeaNode){
-        .kind = SeaNodeKind_ConstInt,
+        .kind = SeaNodeKind_Const,
         .vint = v,
+        .type = sea_type_const_int(fn, v),
     };
     // TODO set input to start
+    //
     return sea_peephole(fn, &n);
 }
 
-SeaNode *sea_create_urnary_expr(SeaFunctionGraph *fn, SeaNodeKind kind, SeaNode *input) {
+SeaNode *sea_create_urnary_op(SeaFunctionGraph *fn, SeaNodeKind kind, SeaNode *input) {
     SeaNode n = (SeaNode){
         .kind = kind,
     };
@@ -441,9 +470,9 @@ SeaNode *sea_create_urnary_expr(SeaFunctionGraph *fn, SeaNodeKind kind, SeaNode 
     return sea_peephole(fn, &n);
 }
 
-SeaNode *sea_create_binary_expr(
+SeaNode *sea_create_bin_op(
     SeaFunctionGraph *fn,
-    SeaNodeKind kind,
+    SeaNodeKind op,
     SeaNode *lhs,
     SeaNode *rhs
 ) {
@@ -451,8 +480,8 @@ SeaNode *sea_create_binary_expr(
     // SeaDataType *t = sea_meet_type(lhs->type, rhs->type);
 
     SeaNode n = {
-        .kind = kind,
-        // .type = t,
+        .kind = op,
+        .type = compute_int_bin_op(fn, op, lhs->type, rhs->type),
     };
     sea_node_alloc_inputs(fn, &n, 2);
     sea_node_set_input(fn, &n, lhs, 0);
@@ -461,11 +490,59 @@ SeaNode *sea_create_binary_expr(
     return sea_peephole(fn, &n);
 }
 
-SeaNode *sea_create_proj(SeaFunctionGraph *fn, SeaNode *input, U16 v) {
-    SeaNode n = {.kind = SeaNodeKind_Proj, .vint = v};
-    // TODO: make a sea_meet_type(a, b) to data kind
+
+SeaNode *sea_create_start(
+    SeaFunctionGraph *fn,
+    SeaFunctionProto proto
+) {
+    Assert(fn->scope);
+    SeaNode *start = push_item(fn->arena, SeaNode);
+    start->kind = SeaNodeKind_Start;
+
+    U64 count = proto.args.count + 1;
+
+    SeaType **types = push_array(fn->arena, SeaType *, count);
+    types[0] = &sea_type_CtrlLive;
+    for EachIndexFrom(i, 1, count) {
+        types[i] = proto.args.fields[i-1].type;
+    }
+
+    start->type = sea_type_tuple(fn, types, count);
+
+    SeaNode *ctrl = sea_create_proj(fn, start, 0);
+    sea_insert_local_symbol(fn, CTRL_STR, ctrl);
+    for EachIndexFrom(i, 1, count) {
+        SeaNode *node = sea_create_proj(fn, start, i);
+        sea_insert_local_symbol(fn, proto.args.fields[i-1].name, node);
+    }
+
+
+
+    return start;
+}
+
+SeaNode *sea_create_stop(SeaFunctionGraph *fn, U16 input_reserve) {
+    SeaNode *stop = push_item(fn->arena, SeaNode);
+    stop->kind = SeaNodeKind_Stop;
+    stop->type = &sea_type_CtrlLive;
+    sea_node_alloc_inputs(fn, stop, input_reserve);
+}
+
+SeaNode *sea_create_proj(SeaFunctionGraph *fn, SeaNode *input, U64 v) {
+    SeaNode n = {
+        .kind = SeaNodeKind_Proj,
+        .vint = v,
+
+    };
+
+    // TODO move to compute
     sea_node_alloc_inputs(fn, &n, 1);
     sea_node_set_input(fn, &n, input, 0);
+
+
+    Assert(input->type->kind == SeaLatticeKind_Tuple);
+    n.type = input->type->tup.elems[v];
+
     return sea_peephole(fn, &n);
 }
 
@@ -495,23 +572,29 @@ SeaNode *sea_create_phi2(SeaFunctionGraph *fn, SeaNode *region, SeaNode *a, SeaN
     return sea_peephole(fn, &n);
 }
 
-SeaNode *sea_create_if(SeaFunctionGraph *fn, SeaNode *prev_ctrl) {
+SeaNode *sea_create_if(SeaFunctionGraph *fn, SeaNode *ctrl, SeaNode *cond) {
     SeaNode n = {.kind = SeaNodeKind_If};
 
-    sea_node_alloc_inputs(fn, &n, 1);
-    sea_node_set_input(fn, &n, prev_ctrl, 0);
+
+
+    sea_node_alloc_inputs(fn, &n, 2);
+    sea_node_set_input(fn, &n, ctrl, 0);
+    sea_node_set_input(fn, &n, cond, 1);
+
+    n.type = sea_compute_if(fn, &n);
 
     sea_node_alloc_users(fn, &n, 2);
 
     return sea_peephole(fn, &n);
 }
 
-SeaNode *sea_create_region_for_if(SeaFunctionGraph *fn, SeaNode *t, SeaNode *f, U16 output_reserves) {
+SeaNode *sea_create_region(SeaFunctionGraph *fn, SeaNode **ctrl_ins, U16 ctrl_count, U16 output_reserves) {
     SeaNode n = {.kind = SeaNodeKind_Region};
 
-    sea_node_alloc_inputs(fn, &n, 2);
-    sea_node_set_input(fn, &n, t, 0);
-    sea_node_set_input(fn, &n, f, 1);
+    sea_node_alloc_inputs(fn, &n, ctrl_count);
+    for EachIndex(i, ctrl_count) {
+        sea_node_set_input(fn, &n, ctrl_ins[i], i);
+    }
 
     if (output_reserves) sea_node_alloc_users(fn, &n, output_reserves);
 

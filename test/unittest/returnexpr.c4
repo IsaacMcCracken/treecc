@@ -1,18 +1,18 @@
+fn int sample03() {
+    int x = 32
+    if (x > 2) {
+        x = 245
+    }
+
+    return x
+}
+
 fn int sample01(int x) {
     return 7 * 2 + 4 * 3
 }
 
 
 fn int sample02(int x) {
-    x = 69
+    x = 42
     return x * x + 2
-}
-
-fn int sample03() {
-    int x = 69
-    if (x > 2) {
-        x = 420
-    }
-
-    return x
 }
