@@ -172,6 +172,9 @@ Token *tokenize(Arena *arena, U32 *token_count, String8 src) {
                 case '/':
                     append_token(arena, TokenKind_Slash, prev, curr, &count);
                     break;
+                case '%':
+                    append_token(arena, TokenKind_Percent, prev, curr, &count);
+                    break;
                 case ';':
                     append_token(arena, TokenKind_SemiColon, prev, curr, &count);
                     break;

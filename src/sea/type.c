@@ -227,7 +227,9 @@ SeaType *compute_int_urnary_op(SeaFunctionGraph *fn, SeaNode *n) {
  }
 
  SeaType *compute(SeaFunctionGraph *fn, SeaNode *n) {
+     switch (n->kind) {
 
+     }
  }
 
  SeaType *compute_int(SeaFunctionGraph *fn, SeaNode *n) {
@@ -241,10 +243,12 @@ SeaType *compute_int_urnary_op(SeaFunctionGraph *fn, SeaNode *n) {
  // TODO change all compute functions to compute_xx(fn, node) rather than type
  SeaType *compute_int_bin_op(
      SeaFunctionGraph *fn,
-     SeaNodeKind op,
-     SeaType *a,
-     SeaType *b
+     SeaNode *n,
  ) {
+     SeaNodeKind op = n->kind;
+     // TODO move 0,1 to 1,2 because of scheduling
+     SeaType *a = n->inputs[0]->type;
+     SeaType *b = n->inputs[1]->type;
      SeaType c = { .kind = SeaLatticeKind_Int };
      SeaTypeInt out = { 0 };
      SeaTypeInt aint = a->i;
@@ -434,6 +438,24 @@ SeaType *compute_int_urnary_op(SeaFunctionGraph *fn, SeaNode *n) {
                  out.min = 0;
                  out.max = 1;
              }
+         } break;
+
+         case SeaNodeKind_ModI: {
+            if (sea_type_is_const_int(a) && sea_type_is_const_int(b)) {
+                S64 aval = sea_type_const_int_val(a);
+                S64 bval = sea_type_const_int_val(b);
+                S64 val = aval % bval;
+                out.min = val;
+                out.max = val;
+            } else if (sea_type_is_const_int(b)) {
+                // TODO fix for sign
+                out.min = 0;
+                out.max = sea_type_const_int_val(b) - 1;
+            } else {
+                // TODO this is probably not correct behaviour
+                out.min = type_min;
+                out.max = type_max;
+            }
          } break;
      }
 

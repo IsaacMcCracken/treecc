@@ -49,6 +49,7 @@ S32 operatator_precedence(Token tok) {
             return 11;
         case TokenKind_Star:
         case TokenKind_Slash:
+        case TokenKind_Percent:
             return 13;
         default:
             return -1;
@@ -194,6 +195,7 @@ SeaNode *parse_bin_expr(
             case TokenKind_Minus:   opkind = SeaNodeKind_SubI; break;
             case TokenKind_Star:    opkind = SeaNodeKind_MulI; break;
             case TokenKind_Slash:   opkind = SeaNodeKind_DivI; break;
+            case TokenKind_Percent: opkind = SeaNodeKind_ModI; break;
             case TokenKind_LogicEqual: opkind  = SeaNodeKind_EqualI; break;
             case TokenKind_LogicNotEqual: opkind  = SeaNodeKind_NotEqualI; break;
             case TokenKind_LogicGreaterThan: opkind  = SeaNodeKind_GreaterThanI; break;
@@ -202,7 +204,8 @@ SeaNode *parse_bin_expr(
             case TokenKind_LogicLesserEqual: opkind  = SeaNodeKind_LesserEqualI; break;
             default:
                 //emit error
-                fprintf(stderr, "Error: expected a binary operator.\n");
+                String8 name = token_string(p, op);
+                parser_error(p, "Expected a binary operator got %.*s", str8_varg(name));
                 break;
         }
 
@@ -281,6 +284,27 @@ void parse_if(Parser *p, SeaFunctionGraph *fn) {
 
 }
 
+
+void parse_while(Parser *p, SeaFunctionGraph *fn) {
+    advance_token(p);
+
+    Token tok = current_token(p);
+    if (tok.kind != TokenKind_LParen) {
+        parser_error(p, "expected a '('.");
+    }
+
+    advance_token(p);
+    SeaNode *expr = parse_expr(p, fn);
+
+    tok = current_token(p);
+    if (tok.kind != TokenKind_RParen) {
+        parser_error(p, "expected a ')'.");
+    }
+
+
+
+}
+
 void parse_local_decl(Parser *p, SeaFunctionGraph *fn) {
     skip_newlines(p);
     SeaType *t = parse_type(p);
@@ -302,6 +326,7 @@ void parse_local_decl(Parser *p, SeaFunctionGraph *fn) {
         sea_insert_local_symbol(fn, name, expr);
     } else {
         // TODO top
+
     }
 
 }
@@ -316,7 +341,12 @@ void parse_stmt(Parser *p, SeaFunctionGraph *fn) {
             advance_token(p);
             SeaNode *expr = parse_expr(p, fn);
             // TODO add control stuff (FIXXX)
-            printf("%.*s() = %lld\n", str8_varg(fn->proto.name), expr->vint);
+            if (expr->kind == SeaNodeKind_Const) {
+                printf("%.*s() = %lld\n", str8_varg(fn->proto.name), expr->vint);
+            } else {
+                printf("%.*s() failed\n", str8_varg(fn->proto.name));
+
+            }
             SeaNode *ret = sea_create_return(fn, fn->start, expr);
         } break;
         case TokenKind_Identifier: {

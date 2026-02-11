@@ -1,5 +1,8 @@
-fn int sample03() {
-    int x = 32
+fn int test1() {
+    return 7 * 2 + 4 * 3
+}
+
+fn int test2(int x) {
     if (x > 2) {
         x = 245
     }
@@ -7,12 +10,26 @@ fn int sample03() {
     return x
 }
 
-fn int sample01(int x) {
-    return 7 * 2 + 4 * 3
+fn int test3() {
+    int x = 42
+
+    int y = x + 3
+    if (y > 42) {
+        x = x + 58
+    }
+
+    if (x > 100) {
+        x = x + 320
+    }
+
+    return x
 }
 
-
-fn int sample02(int x) {
-    x = 42
-    return x * x + 2
+fn int test4(int x) {
+    int y = 42
+    int z = x % 4
+    if (z > 4) {
+        y = 320
+    }
+    return y
 }

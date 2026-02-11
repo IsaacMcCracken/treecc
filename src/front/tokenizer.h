@@ -23,6 +23,7 @@ enum {
   TokenKind_Minus,
   TokenKind_Star,
   TokenKind_Slash,
+  TokenKind_Percent,
 
   TokenKind_LogicNot,
   TokenKind_LogicEqual,

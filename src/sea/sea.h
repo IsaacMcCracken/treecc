@@ -138,6 +138,7 @@ enum {
     SeaNodeKind_NegI,
     SeaNodeKind_MulI,
     SeaNodeKind_DivI,
+    SeaNodeKind_ModI,
     SeaNodeKind_NegateI,
 
     // Logic

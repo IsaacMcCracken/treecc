@@ -160,11 +160,11 @@ void sea_push_new_scope(SeaFunctionGraph *fn) {
     SeaScopeNode *scopedata = scope->vptr;
     scopedata->prev = fn->scope;
 
-    if (scopedata->prev) {
-        SeaScopeNode *prevscopedata = scopedata->prev->vptr;
-        scopedata->depth = prevscopedata->depth + 1;
-        printf("Scope(%p) depth of %llu\n", scope);
-    }
+    // if (scopedata->prev) {
+    //     SeaScopeNode *prevscopedata = scopedata->prev->vptr;
+    //     scopedata->depth = prevscopedata->depth + 1;
+    //     printf("Scope(%p) depth of %llu\n", scope);
+    // }
 
     if (fn->scope) {
         SeaNode *prev_ctrl = sea_scope_lookup_symbol(fn, fn->scope, CTRL_STR);
