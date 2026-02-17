@@ -4,7 +4,7 @@
 
 SeaModule sea_create_module(void) {
     // TODO create symbol table
-    Arena *arena = arena_alloc(MB(64));
+    Arena *arena = arena_alloc(.reserve_size = MB(64));
     U64 cap = 401;
     SeaSymbolEntry **cells = push_array(arena, SeaSymbolEntry *, cap);
 
@@ -54,7 +54,7 @@ void sea_add_function_symbol(SeaModule *m, SeaFunctionProto proto) {
 
 
 SeaFunctionGraph *sea_add_function(SeaModule *m, SeaFunctionProto proto) {
-    Arena *arena = arena_alloc(MB(1)); // TODO heuristic for how much
+    Arena *arena = arena_alloc(.reserve_size = MB(1)); // TODO heuristic for how much
 
     // This code is ugly as fuck;
 

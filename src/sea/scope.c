@@ -119,18 +119,27 @@ SeaScopeSymbolCell *sea_scope_symbol_cell_alloc(SeaFunctionGraph *fn) {
     return cell;
 }
 
-SeaNode *sea_duplicate_scope(SeaFunctionGraph *fn, SeaNode *original) {
+SeaNode *sea_duplicate_scope(SeaFunctionGraph *fn, SeaNode *original, B32 isloop) {
     SeaScopeManager *m = &fn->mscope;
     SeaScopeNode *scopedata = original->vptr;
     SeaNode *dup_scope = sea_alloc_scope_with_cap(fn, scopedata->cap);
     SeaScopeSymbolCell *cell = scopedata->head;
+    SeaNode *ctrl = sea_scope_lookup_symbol(fn, original, CTRL_STR);
     while (cell) {
-        sea_scope_insert_symbol(fn, dup_scope, cell->name, original->inputs[cell->slot]);
+        if (isloop && !str8_match(cell->name, CTRL_STR, 0)) {
+            SeaNode *phi = sea_create_phi2(fn, ctrl, original->inputs[cell->slot], 0);
+            sea_scope_insert_symbol(fn, dup_scope, cell->name, phi);
+            sea_node_set_input(fn, original, phi, cell->slot);
+        } else {
+            sea_scope_insert_symbol(fn, dup_scope, cell->name, original->inputs[cell->slot]);
+
+        }
+
         cell = cell->next;
     }
 
     SeaScopeNode *dupscopedata = dup_scope->vptr;
-    if (scopedata->prev) dupscopedata->prev = sea_duplicate_scope(fn, scopedata->prev);
+    if (scopedata->prev) dupscopedata->prev = sea_duplicate_scope(fn, scopedata->prev, isloop);
 
     return dup_scope;
 }
@@ -272,6 +281,44 @@ SeaNode *sea_merge_scopes(
 
 
     return region;
+}
+
+void sea_scope_end_loop(SeaFunctionGraph *fn, SeaNode *head, SeaNode *back, SeaNode *exit) {
+    SeaNode *ctrl = sea_scope_lookup_symbol(fn, head, CTRL_STR);
+    Assert(ctrl->kind == SeaNodeKind_Loop && ctrl->inputs[2] == 0);
+    SeaNode *back_ctrl = sea_scope_lookup_symbol(fn, back, CTRL_STR);
+
+    SeaNode *this_scope = head;
+    SeaNode *that_scope = back;
+    while (this_scope && that_scope) {
+        SeaScopeNode *this = this_scope->vptr;
+        SeaScopeNode *that = that_scope->vptr;
+
+        SeaScopeSymbolCell *cell = this->head;
+        while (cell) {
+            if (!str8_match(cell->name, CTRL_STR, 0)) {
+                SeaNode *this_phi = this_scope->inputs[cell->slot];
+                Assert(this_phi->kind == SeaNodeKind_Phi && this_phi->inputs[2] == 0 && this_phi->inputs[0] == ctrl);
+
+                SeaNode *that_node = sea_scope_lookup_symbol(fn, that_scope, cell->name);
+
+                sea_node_set_input(fn, this_phi, that_node, 2);
+
+                SeaNode *in = sea_peephole(fn, this_phi);
+
+                if (in != this_phi) {
+                    sea_subsume(fn, this_phi, in);
+                }
+            }
+
+            cell = cell->next;
+        }
+
+        this_scope = this->prev;
+        that_scope = that->prev;
+    }
+
+    sea_free_all_scopes(fn, back);
 }
 
 

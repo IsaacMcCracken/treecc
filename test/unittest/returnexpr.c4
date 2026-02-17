@@ -1,3 +1,11 @@
+fn int test5() {
+    int i = 0
+    while (i < 10) {
+        i = i + 1
+    }
+    return i
+}
+
 fn int test1() {
     return 7 * 2 + 4 * 3
 }

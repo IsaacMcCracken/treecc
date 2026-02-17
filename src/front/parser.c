@@ -246,7 +246,7 @@ void parse_if(Parser *p, SeaFunctionGraph *fn) {
     SeaNode *tnode =    sea_create_proj(fn, ifnode, 1);
 
     SeaNode *tscope = fn->scope;
-    SeaNode *fscope = sea_duplicate_scope(fn, tscope);
+    SeaNode *fscope = sea_duplicate_scope(fn, tscope, 0);
 
     sea_scope_insert_symbol(fn, tscope, CTRL_STR, tnode);
     sea_scope_insert_symbol(fn, fscope, CTRL_STR, fnode);
@@ -288,6 +288,15 @@ void parse_if(Parser *p, SeaFunctionGraph *fn) {
 void parse_while(Parser *p, SeaFunctionGraph *fn) {
     advance_token(p);
 
+    // Create Loop and add Prev Ctrl as the entry set the new control to loop
+    SeaNode *prev_ctrl = sea_lookup_local_symbol(fn, CTRL_STR);
+    SeaNode *loop = sea_create_loop(fn, prev_ctrl);
+    sea_scope_insert_symbol(fn, fn->scope, CTRL_STR, loop);
+
+    // duplicate the scope with phis with as second input null
+    SeaNode *head_scope = fn->scope;
+    fn->scope = sea_duplicate_scope(fn, fn->scope, 1);
+
     Token tok = current_token(p);
     if (tok.kind != TokenKind_LParen) {
         parser_error(p, "expected a '('.");
@@ -302,6 +311,23 @@ void parse_while(Parser *p, SeaFunctionGraph *fn) {
     }
 
 
+    SeaNode *ifnode =   sea_create_if(fn, loop, expr);
+    SeaNode *fnode =    sea_create_proj(fn, ifnode, 0);
+    SeaNode *tnode =    sea_create_proj(fn, ifnode, 1);
+
+    SeaNode *exit_scope = sea_duplicate_scope(fn, fn->scope, 0);
+    sea_scope_insert_symbol(fn, exit_scope, CTRL_STR, fnode);
+    sea_scope_insert_symbol(fn, fn->scope, CTRL_STR, tnode);
+
+    skip_newlines(p);
+    advance_token(p);
+    tok = current_token(p);
+
+    if (tok.kind == TokenKind_LBrace) {
+        parse_block(p, fn);
+    }
+
+    sea_scope_end_loop(fn, head_scope, fn->scope, exit_scope);
 
 }
 
@@ -341,7 +367,7 @@ void parse_stmt(Parser *p, SeaFunctionGraph *fn) {
             advance_token(p);
             SeaNode *expr = parse_expr(p, fn);
             // TODO add control stuff (FIXXX)
-            if (expr->kind == SeaNodeKind_Const) {
+            if (expr->kind == SeaNodeKind_ConstInt) {
                 printf("%.*s() = %lld\n", str8_varg(fn->proto.name), expr->vint);
             } else {
                 printf("%.*s() failed\n", str8_varg(fn->proto.name));
@@ -369,6 +395,10 @@ void parse_stmt(Parser *p, SeaFunctionGraph *fn) {
         } break;
         case TokenKind_If: {
             parse_if(p, fn);
+        } break;
+
+        case TokenKind_While: {
+            parse_while(p, fn);
         } break;
 
         case TokenKind_Int: {
@@ -463,6 +493,8 @@ void parse_func(Parser *p) {
         } else {
             // TODO error
         }
+
+
     }
 
 
@@ -481,6 +513,7 @@ void parse_func(Parser *p) {
     if (tok.kind == TokenKind_LBrace) {
         SeaFunctionGraph *fn = sea_add_function(p->m, proto);
         parse_block(p, fn);
+        printf("allocated %d bytes %d unused.\n", fn->arena->cmt, fn->deadspace);
     } else {
         sea_add_function_symbol(p->m, proto);
     }

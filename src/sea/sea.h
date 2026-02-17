@@ -109,7 +109,7 @@ struct SeaSymbols {
 };
 
 typedef U16 SeaNodeKind;
-enum {
+typedef enum {
     SeaNodeKind_Invalid,
 
     //*****************//
@@ -162,11 +162,11 @@ enum {
     //*****************//
     // Data Nodes
     //*****************//
-    SeaNodeKind_Const,
+    SeaNodeKind_ConstInt,
     SeaNodeKind_Proj,
     SeaNodeKind_Phi,
     SeaNodeKind_COUNT,
-};
+} SeaEnum;
 
 
 typedef struct SeaUser SeaUser;
@@ -297,7 +297,7 @@ SeaNode *sea_create_bin_op(SeaFunctionGraph *fn, SeaNodeKind kind, SeaNode *lhs,
 SeaNode *sea_create_return(SeaFunctionGraph *fn, SeaNode *prev_ctrl, SeaNode *expr);
 SeaNode *sea_create_proj(SeaFunctionGraph *fn, SeaNode *input, U64 v);
 SeaNode *sea_create_if(SeaFunctionGraph *fn, SeaNode *ctrl, SeaNode *cond);
-
+SeaNode *sea_create_loop(SeaFunctionGraph *fn, SeaNode *prev_ctrl);
 
 SeaNode *sea_create_region(SeaFunctionGraph *fn, SeaNode **ctrl_ins, U16 ctrl_count, U16 output_reserves);
 SeaNode *sea_create_phi2(SeaFunctionGraph *fn, SeaNode *region, SeaNode *a, SeaNode *b);
@@ -307,11 +307,13 @@ void sea_push_new_scope(SeaFunctionGraph *fn);
 void sea_pop_scope(SeaFunctionGraph *fn, SeaNode *scope);
 void sea_pop_this_scope(SeaFunctionGraph *fn);
 void sea_free_all_scopes(SeaFunctionGraph *fn, SeaNode *scope);
-SeaNode *sea_duplicate_scope(SeaFunctionGraph *fn, SeaNode *original);
+SeaNode *sea_duplicate_scope(SeaFunctionGraph *fn, SeaNode *original, B32 isloop);
 void sea_scope_insert_symbol(SeaFunctionGraph *fn, SeaNode *scope, String8 name, SeaNode *node);
 void sea_update_local_symbol(SeaFunctionGraph *fn, String8 name, SeaNode *node);
 void sea_insert_local_symbol(SeaFunctionGraph *fn, String8 name, SeaNode *node);
 SeaNode *sea_lookup_local_symbol(SeaFunctionGraph *fn, String8 name);
 SeaNode *sea_scope_lookup_symbol(SeaFunctionGraph *fn, SeaNode *scope, String8 name);
 SeaNode *sea_merge_scopes(SeaFunctionGraph *fn, SeaNode *this_scope, SeaNode *that_scope, SeaNode **out_scope);
+void sea_scope_end_loop(SeaFunctionGraph *fn, SeaNode *head, SeaNode *back, SeaNode *exit);
+
 #endif

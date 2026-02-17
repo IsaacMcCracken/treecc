@@ -13,6 +13,7 @@ SeaDataKind sea_get_data_kind(SeaNode *node);
 SeaNode *sea_create_dead_ctrl(SeaFunctionGraph *fn, SeaNode *input);
 void sea_node_set_input(SeaFunctionGraph *fn, SeaNode *node, SeaNode *input, U16 slot);
 U16 sea_node_append_input(SeaFunctionGraph *fn, SeaNode *node, SeaNode *input);
+void sea_subsume(SeaFunctionGraph *fn, SeaNode *old, SeaNode *new);
 
 
 // Type Stuff
@@ -26,7 +27,10 @@ SeaType *sea_meet(SeaType *a, SeaType *b);
 SeaType *sea_type_const_int(SeaFunctionGraph *fn, S64 v);
 SeaType *sea_type_tuple(SeaFunctionGraph *fn, SeaType **elems, U64 count);
 
-SeaType *compute_int_bin_op(SeaFunctionGraph *fn, SeaNodeKind op, SeaType *a, SeaType *b);
+
+SeaType *sea_compute_type(SeaFunctionGraph *fn, SeaNode *n);
+
+SeaType *compute_int_bin_op(SeaFunctionGraph *fn, SeaNode *n);
 SeaType *sea_compute_if(SeaFunctionGraph *fn, SeaNode *ifnode);
 
 
