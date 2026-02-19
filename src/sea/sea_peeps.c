@@ -1,0 +1,243 @@
+#include "sea_internal.h"
+
+SeaNode *sea_idealize_int(SeaFunctionGraph *fn, SeaNode *node) {
+    // constfold urnary expression
+    if (node->kind == SeaNodeKind_NegateI && (node->inputs[1]->kind == SeaNodeKind_ConstInt)) {
+        return sea_create_const_int(fn, -node->inputs[1]->vint);
+    } else  if (node->kind == SeaNodeKind_Not && node->inputs[1]->kind == SeaNodeKind_ConstInt) {
+        return sea_create_const_int(fn, !node->inputs[1]->vint);
+    }
+
+    SeaNode *lhs = node->inputs[1];
+    SeaNode *rhs = node->inputs[2];
+    // Constfold binary expression
+    if (lhs->kind == SeaNodeKind_ConstInt && rhs->kind == SeaNodeKind_ConstInt) {
+        S64 v = 0;
+        switch (node->kind) {
+            case SeaNodeKind_EqualI: {
+                v = lhs->vint == rhs->vint;
+            } break;
+            case SeaNodeKind_NotEqualI: {
+                v = lhs->vint != rhs->vint;
+            } break;
+            case SeaNodeKind_GreaterEqualI: {
+                v = lhs->vint >= rhs->vint;
+            } break;
+            case SeaNodeKind_GreaterThanI: {
+                v = lhs->vint > rhs->vint;
+            } break;
+            case SeaNodeKind_LesserEqualI: {
+                v = lhs->vint <= rhs->vint;
+            } break;
+            case SeaNodeKind_LesserThanI: {
+                v = lhs->vint < rhs->vint;
+            } break;
+            case SeaNodeKind_AddI: {
+                v = lhs->vint + rhs->vint;
+            } break;
+            case SeaNodeKind_SubI: {
+                v = lhs->vint - rhs->vint;
+            } break;
+            case SeaNodeKind_MulI: {
+                v = lhs->vint * rhs->vint;
+            } break;
+            case SeaNodeKind_DivI: {
+                v = lhs->vint / rhs->vint;
+            } break;
+        }
+        // look in so see if we need to kill nodes
+        return sea_create_const_int(fn, v);
+    }
+
+    if (node->kind == SeaNodeKind_AddI || node->kind == SeaNodeKind_MulI) {
+
+        // if 2 * x -> x * 2  or 2 * (x * 4) -> (x * 4) * 2
+        // swap sides because of communtivity
+        if (lhs->kind == SeaNodeKind_ConstInt && rhs->kind != SeaNodeKind_ConstInt) {
+            return sea_create_bin_op(fn, node->kind, rhs, lhs);
+        }
+
+
+        // (x * 4) * 2 -> x * (4 * 2)
+        // constant propagation
+        if (lhs->kind == node->kind && lhs->inputs[2]->kind == SeaNodeKind_ConstInt) {
+            SeaNode *new_rhs = sea_create_bin_op(fn, node->kind, lhs->inputs[2], rhs);
+            SeaNode *new_expr = sea_create_bin_op(fn, node->kind, lhs->inputs[1], new_rhs);
+            return new_expr;
+        }
+
+    }
+
+
+    if (node->kind == SeaNodeKind_AddI && rhs == lhs) {
+        if (lhs == rhs) {
+            SeaNode *two = sea_create_const_int(fn, 2);
+            return sea_create_bin_op(fn, SeaNodeKind_MulI, lhs, two);
+        }
+
+        if (rhs->kind == SeaNodeKind_ConstInt && rhs->vint == 0) return lhs;
+    }
+
+    if (node->kind == SeaNodeKind_SubI && lhs == rhs) {
+        SeaNode *zero = sea_create_const_int(fn, 0);
+        return zero;
+    }
+
+    if (node->kind == SeaNodeKind_MulI && rhs->kind == SeaNodeKind_ConstInt && rhs->vint == 1) {
+        return lhs;
+    }
+
+    if (node->kind == SeaNodeKind_DivI) {
+        if (lhs == rhs) return sea_create_const_int(fn, 1);
+        if (rhs->kind == SeaNodeKind_ConstInt && rhs->vint == 1) return lhs;
+    }
+
+    if (sea_type_is_const_int(node->type)) {
+        return sea_create_const_int(fn, sea_type_const_int_val(node->type));
+    }
+
+    return node;
+}
+
+
+SeaNode *sea_idealize_phi(SeaFunctionGraph *fn, SeaNode *node) {
+    /*
+     * Phi(x, x, x) becomes x
+     */
+   SeaNode *live = 0;
+   for EachIndexFrom(i, 1, node->inputlen) {
+       if (node->inputs[0]->type != &sea_type_CtrlDead && node->inputs[i] != node) {
+           if (live == 0 || live == node->inputs[i]) {
+               live = node->inputs[i];
+           } else {
+               live = 0;
+               break;
+           }
+       }
+   }
+
+   if (live) return live;
+
+   /*
+    * Phi(Op(a, b), Op(p, q), Op(x, y))
+    * where Op is a consistent binary operation
+    * We tranform into
+    * Op(Phi(a, p, x), Phi(b, q, y))
+    */
+
+    B32 is_same_op = 1;
+    for EachIndexFrom(i, 2, node->inputlen) {
+        if (node->inputs[1]->kind != node->inputs[i]->kind) {
+            is_same_op = 0;
+            break;
+        }
+    }
+
+
+
+    if (is_same_op && sea_node_is_bin_op(node->inputs[1])) {
+        SeaNodeKind op = node->inputs[1]->kind;
+        Temp scratch = scratch_begin(0, 0);
+
+        SeaNode **lhss = push_array(scratch.arena, SeaNode*, node->inputlen);
+        SeaNode **rhss = push_array(scratch.arena, SeaNode*, node->inputlen);
+        // New phis will have the old region
+        lhss[0] = node->inputs[0];
+        rhss[0] = node->inputs[0];
+
+        for EachIndexFrom(i, 1, node->inputlen) {
+            SeaNode *input = node->inputs[i];
+            lhss[i] = input->inputs[1];
+            rhss[i] = input->inputs[2];
+        }
+
+        SeaNode *lhs = sea_create_phi(fn, lhss, node->inputlen);
+        SeaNode *rhs = sea_create_phi(fn, rhss, node->inputlen);
+        scratch_end(scratch);
+
+        return sea_create_bin_op(fn, op, lhs, rhs);
+    }
+
+    return node;
+}
+
+B32 sea_is_const(SeaNode *node) {
+    // TODO better type system
+    return node->kind == SeaNodeKind_ConstInt;
+}
+
+SeaNode *sea_idealize_proj(SeaFunctionGraph *fn, SeaNode *node) {
+    SeaNode *ctrl = node->inputs[0];
+
+    switch (ctrl->kind) {
+        case SeaNodeKind_If: {
+            SeaNode *cond = ctrl->inputs[1];
+            if (cond->kind == SeaNodeKind_ConstInt) {
+                Assert(node->vint == 0 || node->vint == 1);
+                if (ctrl->type->tup.elems[1-node->vint] == &sea_type_CtrlDead)
+                    return ctrl->inputs[0];
+            }
+        } break;
+    }
+
+
+    return node;
+}
+
+SeaNode *sea_idealize_region(SeaFunctionGraph *fn, SeaNode *node) {
+    if (node->inputs[node->inputlen - 1] == 0) return 0; // inprogress what the fuck are we doing
+    // Find dead input
+    U16 path = 0;
+    for EachIndexFrom(i, 1, node->inputlen) {
+        if (node->type == &sea_type_CtrlDead) {
+            path = i;
+        }
+    }
+
+    if (path != 0) {
+
+    }
+}
+
+
+SeaNode *sea_peephole(SeaFunctionGraph *fn, SeaNode *node) {
+    Assert(node->kind != SeaNodeKind_Scope);
+    node = sea_node_singleton(fn, node);
+
+    node->type = sea_compute_type(fn, node);
+
+    SeaNode *new = node;
+    switch (node->kind) {
+        case SeaNodeKind_Not:
+        case SeaNodeKind_EqualI:
+        case SeaNodeKind_NotEqualI:
+        case SeaNodeKind_GreaterThanI:
+        case SeaNodeKind_GreaterEqualI:
+        case SeaNodeKind_LesserThanI:
+        case SeaNodeKind_LesserEqualI:
+        case SeaNodeKind_NegateI:
+        case SeaNodeKind_AddI:
+        case SeaNodeKind_SubI:
+        case SeaNodeKind_MulI:
+        case SeaNodeKind_DivI: {
+            new = sea_idealize_int(fn, node);
+        } break;
+
+        case SeaNodeKind_Proj: {
+            new = sea_idealize_proj(fn, node);
+        } break;
+
+        case SeaNodeKind_Region:
+        case SeaNodeKind_Loop: {
+            new = sea_idealize_region(fn, node);
+        } break;
+
+        case SeaNodeKind_Phi: {
+            new = sea_idealize_phi(fn, node);
+        } break;
+    }
+
+    SeaNode *result = sea_dead_code_elim(fn, node, new);
+
+    return result;
+}

@@ -11,8 +11,10 @@ typedef struct FileList FileList;
 typedef struct Module Module;
 
 struct Parser {
-    SeaModule *m;
     Arena *arena;
+    SeaModule *mod;
+    SeaScopeManager m;
+    SeaNode *scope;
     String8 filename;
     String8 src;
     Token *tokens;

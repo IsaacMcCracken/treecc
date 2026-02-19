@@ -12,7 +12,4 @@
 
 
 // Sea Backend
-#include "src/sea/node.c"
-#include "src/sea/module.c"
-#include "src/sea/scope.c"
-#include "src/sea/type.c"
+#include "src/sea/sea_inc.c"

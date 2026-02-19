@@ -170,7 +170,13 @@ Token *tokenize(Arena *arena, U32 *token_count, String8 src) {
                     append_token(arena, TokenKind_Star, prev, curr, &count);
                     break;
                 case '/':
-                    append_token(arena, TokenKind_Slash, prev, curr, &count);
+                    if (src.str[curr] == '/') {
+                        while (curr < src.size && src.str[curr] != '\n') {
+                            curr += 1;
+                        }
+                    } else {
+                        append_token(arena, TokenKind_Slash, prev, curr, &count);
+                    }
                     break;
                 case '%':
                     append_token(arena, TokenKind_Percent, prev, curr, &count);

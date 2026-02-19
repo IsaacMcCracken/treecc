@@ -104,10 +104,6 @@ void sea_lattice_init(SeaFunctionGraph *fn) {
 
 }
 
-
-
-
-
 B32 sea_type_equal(SeaType *a, SeaType *b) {
     if (a->kind != b->kind) return 0;
 
@@ -143,6 +139,54 @@ SeaType *sea_type_canonical(SeaFunctionGraph *fn, SeaType *t) {
 
     return canon;
 }
+
+SeaType *sea_type_xmeet(SeaFunctionGraph *fn, SeaType *a, SeaType *b) {
+    if (a->kind < SeaLatticeKind_SIMPLE || b->kind < SeaLatticeKind_SIMPLE) {
+        if (a == &sea_type_Bot || b == &sea_type_Top) return a;
+        if (b == &sea_type_Bot || a == &sea_type_Top) return b;
+        if (b->kind > SeaLatticeKind_SIMPLE)
+            return &sea_type_Bot;
+        if (a == &sea_type_CtrlLive || b == &sea_type_CtrlLive)
+            return &sea_type_CtrlLive;
+        return &sea_type_CtrlDead;
+    }
+    Assert(a->kind == b->kind);
+    switch (a->kind) {
+        case SeaLatticeKind_Int: {
+            // For better optimizations we could do multirange integers
+            // but that sounds to cumbersome so we just take the widest
+            // range
+            S64 max = Max(a->i.max, b->i.max);
+            S64 min = Min(a->i.min, b->i.min);
+            SeaType t = {
+                .kind = SeaLatticeKind_Int,
+                .i = {
+                    .min = min,
+                    .max = max,
+                },
+            };
+
+            return sea_type_canonical(fn, &t);
+        } break;
+    }
+
+
+
+    return 0;
+}
+
+SeaType *sea_type_meet(SeaFunctionGraph *fn, SeaType *a, SeaType *b) {
+    if (a == b) return a;
+    if (a->kind == b->kind) return sea_type_xmeet(fn, a, b);
+    if (a->kind < SeaLatticeKind_SIMPLE)
+        return sea_type_xmeet(fn, a, b);
+    if (b->kind < SeaLatticeKind_SIMPLE)
+        return sea_type_xmeet(fn, b, a);
+
+    return &sea_type_Bot;
+}
+
+
 
 B32 sea_type_is_const_int(SeaType *t) {
     switch (t->kind) {
@@ -190,7 +234,7 @@ SeaType *compute_int_const(SeaFunctionGraph *fn, SeaNode *n) {
 
 SeaType *compute_int_urnary_op(SeaFunctionGraph *fn, SeaNode *n) {
     SeaNodeKind op = n->kind;
-    SeaType *a = n->inputs[0]->type;
+    SeaType *a = n->inputs[1]->type;
     SeaType c = { .kind = SeaLatticeKind_Int };
     SeaTypeInt out = { 0 };
     SeaTypeInt aint = a->i;
@@ -243,8 +287,8 @@ SeaType *compute_int_urnary_op(SeaFunctionGraph *fn, SeaNode *n) {
  SeaType *compute_int_bin_op(SeaFunctionGraph *fn, SeaNode *n) {
      SeaNodeKind op = n->kind;
      // TODO move 0,1 to 1,2 because of scheduling
-     SeaType *a = n->inputs[0]->type;
-     SeaType *b = n->inputs[1]->type;
+     SeaType *a = n->inputs[1]->type;
+     SeaType *b = n->inputs[2]->type;
 
      if (a->kind != SeaLatticeKind_Int || b->kind != SeaLatticeKind_Int) {
          return &sea_type_Bot;
@@ -486,14 +530,23 @@ SeaType *compute_int_urnary_op(SeaFunctionGraph *fn, SeaNode *n) {
      return &sea_type_IfBoth;
  }
 
+ SeaType *compute_region(SeaFunctionGraph *fn, SeaNode *region) {
+     SeaType *t = &sea_type_CtrlDead;
+     for EachIndexFrom(i, 1, region->inputlen) {
+        SeaNode *input = region->inputs[i];
+        // TODO figure out if this is valid or not
+        // if (input)
+        t = sea_type_meet(fn, t, input->type);
+     }
+     return t;
+ }
+
 
  SeaType *compute_phi(SeaFunctionGraph *fn, SeaNode *n) {
-     SeaNode *region = n->inputs[0];
-     SeaType *t = &sea_type_Bot;
-     if (region->kind == SeaNodeKind_Region || region->kind == SeaNodeKind_Loop) {
-         if (region->inputs[2] != 0)
-             t = &sea_type_Top;
-         // need todo meet;
+     SeaType *t = &sea_type_Top;
+     for EachIndexFrom(i, 1, n->inputlen) {
+        SeaNode *input = n->inputs[i];
+        t = sea_type_meet(fn, t, input->type);
      }
      return t;
  }
@@ -536,7 +589,9 @@ SeaType *sea_compute_type(SeaFunctionGraph *fn, SeaNode *n) {
         }
 
         case SeaNodeKind_Loop:
-        case SeaNodeKind_Region:
+        case SeaNodeKind_Region: {
+            return compute_region(fn, n);
+        }
         case SeaNodeKind_Return: {
             return &sea_type_CtrlLive;
         }

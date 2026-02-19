@@ -53,7 +53,11 @@ void sea_add_function_symbol(SeaModule *m, SeaFunctionProto proto) {
 
 
 
-SeaFunctionGraph *sea_add_function(SeaModule *m, SeaFunctionProto proto) {
+SeaFunctionGraph *sea_add_function(
+    SeaModule *mod,
+    SeaScopeManager *m,
+    SeaFunctionProto proto
+) {
     Arena *arena = arena_alloc(.reserve_size = MB(1)); // TODO heuristic for how much
 
     // This code is ugly as fuck;
@@ -65,28 +69,27 @@ SeaFunctionGraph *sea_add_function(SeaModule *m, SeaFunctionProto proto) {
     // Set intenals
     {
         fn->proto = proto;
-        fn->m = m;
+        fn->m = mod;
         fn->arena = arena;
-        fn->mscope.default_cap = 61;
         fn->map = sea_map_init(arena, 101);
 
         sea_lattice_init(fn);
-        sea_push_new_scope(fn);
-        fn->start = sea_create_start(fn, proto);
+        sea_push_scope(m);
+        fn->start = sea_create_start(fn, m, proto);
         fn->stop = sea_create_stop(fn, 4);
     }
 
 
     // add the function to the module list
     {
-        rw_mutex_take(m->lock, 1);
+        rw_mutex_take(mod->lock, 1);
 
-        SLLQueuePush(m->functions.first, m->functions.last, fn_node);
-        m->functions.count += 1;
+        SLLQueuePush(mod->functions.first, mod->functions.last, fn_node);
+        mod->functions.count += 1;
 
-        sea_add_function_symbol_(m, proto);
+        sea_add_function_symbol_(mod, proto);
 
-        rw_mutex_drop(m->lock, 1);
+        rw_mutex_drop(mod->lock, 1);
     }
 
     return fn;

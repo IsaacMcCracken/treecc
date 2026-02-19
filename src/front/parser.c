@@ -143,7 +143,7 @@ SeaNode *parse_urnary(Parser *p, SeaFunctionGraph *fn) {
 
         case TokenKind_Identifier: {
             String8 name = token_string(p, tok);
-            SeaNode *var = sea_lookup_local_symbol(fn, name);
+            SeaNode *var = sea_scope_lookup_symbol(&p->m, name);
             if (!var) {
                 parser_error(p, "in the expression the symbol '%.*s' is not defined.", str8_varg(name));
             }
@@ -239,18 +239,16 @@ void parse_if(Parser *p, SeaFunctionGraph *fn) {
 
 
     // TODO find out why this returns 0
-    SeaNode *prev_ctrl = sea_lookup_local_symbol(fn, CTRL_STR);
+    SeaNode *prev_ctrl = p->m.curr->inputs[0];
 
     SeaNode *ifnode =   sea_create_if(fn, prev_ctrl, expr);
     SeaNode *fnode =    sea_create_proj(fn, ifnode, 0);
     SeaNode *tnode =    sea_create_proj(fn, ifnode, 1);
 
-    SeaNode *tscope = fn->scope;
-    SeaNode *fscope = sea_duplicate_scope(fn, tscope, 0);
+    SeaNode *tscope = p->m.curr;
+    SeaNode *fscope = sea_duplicate_scope(fn, &p->m, 0);
 
-    sea_scope_insert_symbol(fn, tscope, CTRL_STR, tnode);
-    sea_scope_insert_symbol(fn, fscope, CTRL_STR, fnode);
-
+    sea_scope_update_symbol(fn, &p->m, CTRL_STR, tnode);
 
     advance_token(p);
     skip_newlines(p);
@@ -261,7 +259,8 @@ void parse_if(Parser *p, SeaFunctionGraph *fn) {
     }
 
     // Parse the false case
-    fn->scope = fscope;
+    p->m.curr = fscope;
+    sea_scope_update_symbol(fn, &p->m, CTRL_STR, fnode);
 
     skip_newlines(p);
     tok = current_token(p);
@@ -278,56 +277,53 @@ void parse_if(Parser *p, SeaFunctionGraph *fn) {
         }
     }
 
-    SeaNode *region = sea_merge_scopes(fn, fscope, tscope, &fn->scope);
-
-    sea_insert_local_symbol(fn, CTRL_STR, region);
-
+    SeaNode *region = sea_merge_scopes(fn, &p->m, tscope);
 }
 
 
 void parse_while(Parser *p, SeaFunctionGraph *fn) {
-    advance_token(p);
+    // advance_token(p);
 
-    // Create Loop and add Prev Ctrl as the entry set the new control to loop
-    SeaNode *prev_ctrl = sea_lookup_local_symbol(fn, CTRL_STR);
-    SeaNode *loop = sea_create_loop(fn, prev_ctrl);
-    sea_scope_insert_symbol(fn, fn->scope, CTRL_STR, loop);
+    // // Create Loop and add Prev Ctrl as the entry set the new control to loop
+    // SeaNode *prev_ctrl = sea_scope_lookup_symbol(fn, CTRL_STR);
+    // SeaNode *loop = sea_create_loop(fn, prev_ctrl);
+    // sea_scope_insert_symbol(fn, fn->scope, CTRL_STR, loop);
 
-    // duplicate the scope with phis with as second input null
-    SeaNode *head_scope = fn->scope;
-    fn->scope = sea_duplicate_scope(fn, fn->scope, 1);
+    // // duplicate the scope with phis with as second input null
+    // SeaNode *head_scope = fn->scope;
+    // fn->scope = sea_duplicate_scope(fn, fn->scope, 1);
 
-    Token tok = current_token(p);
-    if (tok.kind != TokenKind_LParen) {
-        parser_error(p, "expected a '('.");
-    }
+    // Token tok = current_token(p);
+    // if (tok.kind != TokenKind_LParen) {
+    //     parser_error(p, "expected a '('.");
+    // }
 
-    advance_token(p);
-    SeaNode *expr = parse_expr(p, fn);
+    // advance_token(p);
+    // SeaNode *expr = parse_expr(p, fn);
 
-    tok = current_token(p);
-    if (tok.kind != TokenKind_RParen) {
-        parser_error(p, "expected a ')'.");
-    }
+    // tok = current_token(p);
+    // if (tok.kind != TokenKind_RParen) {
+    //     parser_error(p, "expected a ')'.");
+    // }
 
 
-    SeaNode *ifnode =   sea_create_if(fn, loop, expr);
-    SeaNode *fnode =    sea_create_proj(fn, ifnode, 0);
-    SeaNode *tnode =    sea_create_proj(fn, ifnode, 1);
+    // SeaNode *ifnode =   sea_create_if(fn, loop, expr);
+    // SeaNode *fnode =    sea_create_proj(fn, ifnode, 0);
+    // SeaNode *tnode =    sea_create_proj(fn, ifnode, 1);
 
-    SeaNode *exit_scope = sea_duplicate_scope(fn, fn->scope, 0);
-    sea_scope_insert_symbol(fn, exit_scope, CTRL_STR, fnode);
-    sea_scope_insert_symbol(fn, fn->scope, CTRL_STR, tnode);
+    // SeaNode *exit_scope = sea_duplicate_scope(fn, fn->scope, 0);
+    // sea_scope_insert_symbol(fn, exit_scope, CTRL_STR, fnode);
+    // sea_scope_insert_symbol(fn, fn->scope, CTRL_STR, tnode);
 
-    skip_newlines(p);
-    advance_token(p);
-    tok = current_token(p);
+    // skip_newlines(p);
+    // advance_token(p);
+    // tok = current_token(p);
 
-    if (tok.kind == TokenKind_LBrace) {
-        parse_block(p, fn);
-    }
+    // if (tok.kind == TokenKind_LBrace) {
+    //     parse_block(p, fn);
+    // }
 
-    sea_scope_end_loop(fn, head_scope, fn->scope, exit_scope);
+    // sea_scope_end_loop(fn, head_scope, fn->scope, exit_scope);
 
 }
 
@@ -349,7 +345,7 @@ void parse_local_decl(Parser *p, SeaFunctionGraph *fn) {
         //     fprintf(stderr, "Error: Type Mismatch");
         // }
 
-        sea_insert_local_symbol(fn, name, expr);
+        sea_scope_insert_symbol(fn, &p->m, name, expr);
     } else {
         // TODO top
 
@@ -378,7 +374,7 @@ void parse_stmt(Parser *p, SeaFunctionGraph *fn) {
         case TokenKind_Identifier: {
             // TODO see if its a user defined type
             String8 name = token_string(p, tok);
-            SeaNode *n = sea_lookup_local_symbol(fn, name);
+            SeaNode *n = sea_scope_lookup_symbol(&p->m, name);
             if (!n) {
                 String8 name = token_string(p, tok);
                 parser_error(p, "symbol '%.*s' is not defined in scope.", str8_varg(name));
@@ -389,7 +385,7 @@ void parse_stmt(Parser *p, SeaFunctionGraph *fn) {
             if (tok.kind == TokenKind_Equals) {
                 advance_token(p);
                 SeaNode *expr = parse_expr(p, fn);
-                if (n) sea_update_local_symbol(fn, name, expr);
+                if (n) sea_scope_update_symbol(fn, &p->m, name, expr);
             }
 
         } break;
@@ -418,7 +414,7 @@ void parse_block(Parser *p, SeaFunctionGraph *fn) {
     advance_token(p);
     skip_newlines(p);
 
-    sea_push_new_scope(fn);
+    sea_push_scope(&p->m);
 
 
 
@@ -430,7 +426,7 @@ void parse_block(Parser *p, SeaFunctionGraph *fn) {
     }
 
     advance_token(p);
-    sea_pop_this_scope(fn);
+    sea_pop_scope(&p->m);
 }
 
 
@@ -511,11 +507,21 @@ void parse_func(Parser *p) {
     };
 
     if (tok.kind == TokenKind_LBrace) {
-        SeaFunctionGraph *fn = sea_add_function(p->m, proto);
+        Temp temp = temp_begin(p->m.arena);
+        SeaNode *scope = sea_create_scope(&p->m, 128);
+        p->m.curr = scope;
+
+        SeaFunctionGraph *fn = sea_add_function(p->mod, &p->m, proto);
         parse_block(p, fn);
+
+        p->m.curr = 0;
+        p->m.cellpool = 0;
+        p->m.scopepool = 0;
+        temp_end(temp);
+
         printf("allocated %d bytes %d unused.\n", fn->arena->cmt, fn->deadspace);
     } else {
-        sea_add_function_symbol(p->m, proto);
+        sea_add_function_symbol(p->mod, proto);
     }
 }
 
@@ -549,12 +555,12 @@ void parse_decls(Parser *p) {
 
 
 
-void module_add_file_and_parse(Module *m, String8 filename) {
+void module_add_file_and_parse(Module *mod, String8 filename) {
     Arena *arena = arena_alloc(); // TODO BETTER RESERVE SIZE
     Temp scratch = scratch_begin(0, 0);
 
     String8List l = {0};
-    str8_list_push(scratch.arena, &l, m->path);
+    str8_list_push(scratch.arena, &l, mod->path);
     str8_list_push(scratch.arena, &l, str8_lit("/"));
     str8_list_push(scratch.arena, &l, filename);
 
@@ -573,9 +579,15 @@ void module_add_file_and_parse(Module *m, String8 filename) {
 
     printf("Parsing: %.*s\n%.*s\n",str8_varg(filename), str8_varg(src));
 
+
+
     Parser p = (Parser){
-        .m = &m->m,
+        .mod = &mod->m,
         .arena = arena,
+        .m = (SeaScopeManager){
+            .arena = arena,
+            .default_cap = 61,
+        },
         .filename = filename,
         .src = src,
         .tokens = tokens,

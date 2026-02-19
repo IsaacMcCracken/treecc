@@ -171,14 +171,19 @@ typedef enum {
 
 typedef struct SeaUser SeaUser;
 struct SeaUser {
-  SeaNode *n;
-  U16 slot;
+    SeaUser *next;
+    struct {
+      U64 n: 48;
+      U64 slot : 16;
+    };
 };
 
 struct SeaNode {
     SeaNodeKind kind;
-    U16 inputcap, usercap;
-    U16 inputlen, userlen;
+    U16 inputcap;
+    U16 inputlen;
+    U32 gvn;
+    U16 idepth;
     SeaNode **inputs;
     SeaUser *users;
     union {
@@ -210,22 +215,32 @@ struct SeaScopeSymbolCell {
     U16 slot;
 };
 
-typedef struct SeaScopeNode SeaScopeNode;
-struct SeaScopeNode {
-    SeaNode *prev; // previous scope / parent
+typedef struct SeaScopeData SeaScopeData;
+struct SeaScopeData {
+    SeaScopeData *next; // useful for merging
+    SeaScopeData *prev; // useful for going forward
     SeaScopeSymbolCell **cells; // buckets for table lookup
     U64 cap; // capacity
     SeaScopeSymbolCell *head; // first symbol (for iteration)
     SeaScopeSymbolCell *tail; // last symbol (for appending)
     U64 symbol_count;
-    U64 depth;
+    U16 inputlen;
+};
+
+typedef struct SeaScopeList SeaScopeList;
+struct SeaScopeList {
+    SeaScopeData *head;
+    SeaScopeData *tail;
+    U64 count;
 };
 
 
 typedef struct SeaScopeManager SeaScopeManager;
 struct SeaScopeManager {
+    Arena *arena; // allocator of scope data probably in parser
+    SeaNode *curr; // current scope
     SeaScopeSymbolCell *cellpool; // free list for cells
-    SeaNode *scopepool; // free list for scopes
+    SeaScopeData *scopepool; // free list for scopes
     U64 default_cap; // capacity for new scopes
 };
 
@@ -237,13 +252,10 @@ struct SeaFunctionGraph {
     Arena *tmp;
     SeaFunctionProto proto;
     U64 deadspace;
-    SeaScopeManager mscope;
-    SeaNode *scope;
     SeaNodeMap map;
     SeaTypeLattice *lat;
     SeaNode *start;
     SeaNode *stop;
-    SeaNode *curr; // only used in graph creation
 };
 
 typedef struct SeaFunctionGraphNode SeaFunctionGraphNode;
@@ -275,7 +287,7 @@ extern SeaType sea_type_CtrlDead;
 
 // Module
 SeaModule sea_create_module(void);
-SeaFunctionGraph *sea_add_function(SeaModule *m, SeaFunctionProto proto);
+SeaFunctionGraph *sea_add_function(SeaModule *mod, SeaScopeManager *m, SeaFunctionProto proto);
 void sea_add_function_symbol(SeaModule *m, SeaFunctionProto proto);
 
 
@@ -283,13 +295,13 @@ void sea_node_print_expr_debug(SeaNode *expr);
 
 // initalization
 SeaNodeMap sea_map_init(Arena *arena, U64 map_cap);
-// U32 sea_hash_dbj2(Byte *data, U64 len);
+
+// Optimizations
+SeaNode *sea_peephole(SeaFunctionGraph *fn, SeaNode *node);
 
 // Builder Functions
-
 SeaNode *sea_create_stop(SeaFunctionGraph *fn, U16 input_reserve);
-SeaNode *sea_create_start(SeaFunctionGraph *fn, SeaFunctionProto proto);
-
+SeaNode *sea_create_start(SeaFunctionGraph *fn, SeaScopeManager *m, SeaFunctionProto proto);
 SeaNode *sea_create_const_int(SeaFunctionGraph *fn, S64 v);
 SeaNode *sea_create_urnary_op(SeaFunctionGraph *fn, SeaNodeKind kind, SeaNode *input);
 SeaNode *sea_create_bin_op(SeaFunctionGraph *fn, SeaNodeKind kind, SeaNode *lhs, SeaNode *rhs);
@@ -299,21 +311,17 @@ SeaNode *sea_create_proj(SeaFunctionGraph *fn, SeaNode *input, U64 v);
 SeaNode *sea_create_if(SeaFunctionGraph *fn, SeaNode *ctrl, SeaNode *cond);
 SeaNode *sea_create_loop(SeaFunctionGraph *fn, SeaNode *prev_ctrl);
 
-SeaNode *sea_create_region(SeaFunctionGraph *fn, SeaNode **ctrl_ins, U16 ctrl_count, U16 output_reserves);
+SeaNode *sea_create_region(SeaFunctionGraph *fn, SeaNode **inputs, U16 ctrl_count);
 SeaNode *sea_create_phi2(SeaFunctionGraph *fn, SeaNode *region, SeaNode *a, SeaNode *b);
 
-
-void sea_push_new_scope(SeaFunctionGraph *fn);
-void sea_pop_scope(SeaFunctionGraph *fn, SeaNode *scope);
-void sea_pop_this_scope(SeaFunctionGraph *fn);
-void sea_free_all_scopes(SeaFunctionGraph *fn, SeaNode *scope);
-SeaNode *sea_duplicate_scope(SeaFunctionGraph *fn, SeaNode *original, B32 isloop);
-void sea_scope_insert_symbol(SeaFunctionGraph *fn, SeaNode *scope, String8 name, SeaNode *node);
-void sea_update_local_symbol(SeaFunctionGraph *fn, String8 name, SeaNode *node);
-void sea_insert_local_symbol(SeaFunctionGraph *fn, String8 name, SeaNode *node);
-SeaNode *sea_lookup_local_symbol(SeaFunctionGraph *fn, String8 name);
-SeaNode *sea_scope_lookup_symbol(SeaFunctionGraph *fn, SeaNode *scope, String8 name);
-SeaNode *sea_merge_scopes(SeaFunctionGraph *fn, SeaNode *this_scope, SeaNode *that_scope, SeaNode **out_scope);
-void sea_scope_end_loop(SeaFunctionGraph *fn, SeaNode *head, SeaNode *back, SeaNode *exit);
+// Scope Functionality For Building SSA
+SeaNode *sea_create_scope(SeaScopeManager *m, U16 input_reserve);
+void sea_push_scope(SeaScopeManager *m);
+void sea_pop_scope(SeaScopeManager *m);
+void sea_scope_insert_symbol(SeaFunctionGraph *fn, SeaScopeManager *m, String8 name, SeaNode *node);
+void sea_scope_update_symbol(SeaFunctionGraph *fn, SeaScopeManager *m, String8 name, SeaNode *node);
+SeaNode *sea_scope_lookup_symbol(SeaScopeManager *m, String8 name);
+SeaNode *sea_duplicate_scope(SeaFunctionGraph *fn, SeaScopeManager *m, B32 isloop);
+SeaNode *sea_merge_scopes(SeaFunctionGraph *fn, SeaScopeManager *m, SeaNode *that_scope);
 
 #endif

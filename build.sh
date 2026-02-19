@@ -1,3 +1,3 @@
-build_args="build.c -o compiler -I include -I src -g -lm -lpthread  -ldl"
+build_args="build.c -o c4c -I include -I src -g -lm -lpthread  -ldl"
 gcc $build_args
-./compiler test/unittest
+./c4c test/unittest

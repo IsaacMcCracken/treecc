@@ -197,6 +197,7 @@
 #define EachNonZeroEnumVal(type, it) (type it = (type)1; it < type##_COUNT; it = (type)(it+1))
 #define EachInRange(it, range) (U64 it = (range).min; it < (range).max; it += 1)
 #define EachNode(it, T, first) (T *it = first; it != 0; it = it->next)
+#define EachNodeReverse(it, T, last) (T *it = last; it != 0; it = it->prev)
 
 ////////////////////////////////
 //~ rjf: Memory Operation Macros
