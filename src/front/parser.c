@@ -242,7 +242,11 @@ void parse_if(Parser *p, SeaFunctionGraph *fn) {
     SeaNode *prev_ctrl = p->m.curr->inputs[0];
 
     SeaNode *ifnode =   sea_create_if(fn, prev_ctrl, expr);
+    sea_node_keep(fn, ifnode);
+
     SeaNode *fnode =    sea_create_proj(fn, ifnode, 0);
+
+    sea_node_unkeep(fn, ifnode);
     SeaNode *tnode =    sea_create_proj(fn, ifnode, 1);
 
     SeaNode *tscope = p->m.curr;
@@ -278,52 +282,58 @@ void parse_if(Parser *p, SeaFunctionGraph *fn) {
     }
 
     SeaNode *region = sea_merge_scopes(fn, &p->m, tscope);
+    sea_scope_update_symbol(fn, &p->m, CTRL_STR, region);
 }
 
 
 void parse_while(Parser *p, SeaFunctionGraph *fn) {
-    // advance_token(p);
+    advance_token(p);
 
-    // // Create Loop and add Prev Ctrl as the entry set the new control to loop
-    // SeaNode *prev_ctrl = sea_scope_lookup_symbol(fn, CTRL_STR);
-    // SeaNode *loop = sea_create_loop(fn, prev_ctrl);
-    // sea_scope_insert_symbol(fn, fn->scope, CTRL_STR, loop);
+    // Create Loop and add Prev Ctrl as the entry set the new control to loop
+    SeaNode *prev_ctrl = sea_scope_lookup_symbol(&p->m, CTRL_STR);
+    SeaNode *loop = sea_create_loop(fn, prev_ctrl);
+    sea_scope_insert_symbol(fn, &p->m, CTRL_STR, loop);
 
     // // duplicate the scope with phis with as second input null
-    // SeaNode *head_scope = fn->scope;
-    // fn->scope = sea_duplicate_scope(fn, fn->scope, 1);
+    SeaNode *head_scope = p->m.curr;
+    p->m.curr = sea_duplicate_scope(fn, &p->m, 1);
 
-    // Token tok = current_token(p);
-    // if (tok.kind != TokenKind_LParen) {
-    //     parser_error(p, "expected a '('.");
-    // }
+    Token tok = current_token(p);
+    if (tok.kind != TokenKind_LParen) {
+        parser_error(p, "expected a '('.");
+    }
 
-    // advance_token(p);
-    // SeaNode *expr = parse_expr(p, fn);
+    advance_token(p);
+    SeaNode *expr = parse_expr(p, fn);
 
-    // tok = current_token(p);
-    // if (tok.kind != TokenKind_RParen) {
-    //     parser_error(p, "expected a ')'.");
-    // }
+    tok = current_token(p);
+    if (tok.kind != TokenKind_RParen) {
+        parser_error(p, "expected a ')'.");
+    }
 
 
-    // SeaNode *ifnode =   sea_create_if(fn, loop, expr);
-    // SeaNode *fnode =    sea_create_proj(fn, ifnode, 0);
-    // SeaNode *tnode =    sea_create_proj(fn, ifnode, 1);
+    SeaNode *ifnode =   sea_create_if(fn, loop, expr);
+    sea_node_keep(fn, ifnode);
+    SeaNode *fnode =    sea_create_proj(fn, ifnode, 0);
+    sea_node_unkeep(fn, ifnode);
+    SeaNode *tnode =    sea_create_proj(fn, ifnode, 1);
+    sea_scope_insert_symbol(fn, &p->m, CTRL_STR, tnode);
 
-    // SeaNode *exit_scope = sea_duplicate_scope(fn, fn->scope, 0);
-    // sea_scope_insert_symbol(fn, exit_scope, CTRL_STR, fnode);
-    // sea_scope_insert_symbol(fn, fn->scope, CTRL_STR, tnode);
 
-    // skip_newlines(p);
-    // advance_token(p);
-    // tok = current_token(p);
+    SeaNode *back_scope = p->m.curr;
+    SeaNode *exit_scope = sea_duplicate_scope(fn, &p->m, 0);
+    p->m.curr = exit_scope;
+    sea_scope_insert_symbol(fn, &p->m, CTRL_STR, fnode);
 
-    // if (tok.kind == TokenKind_LBrace) {
-    //     parse_block(p, fn);
-    // }
+    advance_token(p);
+    skip_newlines(p);
+    tok = current_token(p);
 
-    // sea_scope_end_loop(fn, head_scope, fn->scope, exit_scope);
+    if (tok.kind == TokenKind_LBrace) {
+        parse_block(p, fn);
+    }
+
+    sea_scope_end_loop(fn, &p->m, head_scope, back_scope, exit_scope);
 
 }
 
@@ -362,11 +372,12 @@ void parse_stmt(Parser *p, SeaFunctionGraph *fn) {
         case TokenKind_Return: {
             advance_token(p);
             SeaNode *expr = parse_expr(p, fn);
+            SeaNode *result = sea_peephole(fn, expr);
             // TODO add control stuff (FIXXX)
-            if (expr->kind == SeaNodeKind_ConstInt) {
+            if (result->kind == SeaNodeKind_ConstInt) {
                 printf("%.*s() = %lld\n", str8_varg(fn->proto.name), expr->vint);
             } else {
-                printf("%.*s() failed\n", str8_varg(fn->proto.name));
+                printf("%.*s() failed(%d)\n", str8_varg(fn->proto.name), (int)expr->kind);
 
             }
             SeaNode *ret = sea_create_return(fn, fn->start, expr);
@@ -519,7 +530,7 @@ void parse_func(Parser *p) {
         p->m.scopepool = 0;
         temp_end(temp);
 
-        printf("allocated %d bytes %d unused.\n", fn->arena->cmt, fn->deadspace);
+        printf("allocated %d bytes %d unused.\n", fn->arena->pos, fn->deadspace);
     } else {
         sea_add_function_symbol(p->mod, proto);
     }

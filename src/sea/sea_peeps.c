@@ -105,8 +105,9 @@ SeaNode *sea_idealize_phi(SeaFunctionGraph *fn, SeaNode *node) {
      * Phi(x, x, x) becomes x
      */
    SeaNode *live = 0;
+   SeaNode *region = node->inputs[0];
    for EachIndexFrom(i, 1, node->inputlen) {
-       if (node->inputs[0]->type != &sea_type_CtrlDead && node->inputs[i] != node) {
+       if (region->inputs[i]->type != &sea_type_CtrlDead && node->inputs[i] != node) {
            if (live == 0 || live == node->inputs[i]) {
                live = node->inputs[i];
            } else {
@@ -161,10 +162,6 @@ SeaNode *sea_idealize_phi(SeaFunctionGraph *fn, SeaNode *node) {
     return node;
 }
 
-B32 sea_is_const(SeaNode *node) {
-    // TODO better type system
-    return node->kind == SeaNodeKind_ConstInt;
-}
 
 SeaNode *sea_idealize_proj(SeaFunctionGraph *fn, SeaNode *node) {
     SeaNode *ctrl = node->inputs[0];
@@ -173,8 +170,17 @@ SeaNode *sea_idealize_proj(SeaFunctionGraph *fn, SeaNode *node) {
         case SeaNodeKind_If: {
             SeaNode *cond = ctrl->inputs[1];
             if (cond->kind == SeaNodeKind_ConstInt) {
-                Assert(node->vint == 0 || node->vint == 1);
-                if (ctrl->type->tup.elems[1-node->vint] == &sea_type_CtrlDead)
+                Assert(!((~1)&node->vint)); // is bool
+                /**
+                 * Example
+                 * if (1) -> type[Dead, Live]
+                 * if we are true branch then then we have type Live
+                 * Check type of if->type.tup(!val) to see if the other
+                 * branch is dead.
+                 *
+                 * If the other branch is dead we return the control before the if
+                 */
+                if (ctrl->type->tup.elems[!(node->vint)] == &sea_type_CtrlDead)
                     return ctrl->inputs[0];
             }
         } break;
@@ -189,14 +195,35 @@ SeaNode *sea_idealize_region(SeaFunctionGraph *fn, SeaNode *node) {
     // Find dead input
     U16 path = 0;
     for EachIndexFrom(i, 1, node->inputlen) {
-        if (node->type == &sea_type_CtrlDead) {
+        SeaNode *input = node->inputs[i];
+        if (input->type == &sea_type_CtrlDead) {
             path = i;
+            break;
         }
     }
 
+    // if there is a dead input
     if (path != 0) {
+        for EachNode(user_node, SeaUser, node->users) {
+            SeaNode *user = sea_user_val(user_node);
+            if (user->kind == SeaNodeKind_Phi) {
+                sea_node_remove_input(fn, user, path);
+            }
+        }
+        sea_node_remove_input(fn, node, path);
 
+        if (node->inputlen == 2) {
+            // for EachNode(user_node, SeaUser, node->users) {
+            //     SeaNode *user = sea_user_val(user_node);
+            //     if (user->kind == SeaNodeKind_Phi) {
+            //         NotImplemented;
+            //     }
+            // }
+            return node->inputs[1];
+        }
     }
+
+    return node;
 }
 
 

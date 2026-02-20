@@ -204,6 +204,23 @@ U16 sea_node_append_input(SeaFunctionGraph *fn, SeaNode *node, SeaNode *input) {
 }
 
 
+void sea_node_remove_input(SeaFunctionGraph *fn, SeaNode *node, U16 slot) {
+    SeaNode *old = node->inputs[slot];
+    if (old) {
+        sea_node_remove_user(fn, old, node);
+        if (old->users == 0) sea_node_kill(fn, old);
+    }
+
+    if (slot < node->inputlen - 1) {
+        //TODO identity changed
+
+        // get last element
+        SeaNode *tmp = node->inputs[node->inputlen - 1];
+        node->inputs[slot] = tmp;
+    }
+
+    node->inputlen -= 1;
+}
 
 void sea_node_remove_user(SeaFunctionGraph *fn, SeaNode *node, SeaNode *user) {
     SeaUser *curr = node->users;
@@ -215,7 +232,7 @@ void sea_node_remove_user(SeaFunctionGraph *fn, SeaNode *node, SeaNode *user) {
                 prev->next = curr->next;
                 // TODO maybe free user struct
             } else {
-                node->users = 0;
+                node->users = curr->next;
             }
             return;
         }
@@ -336,7 +353,7 @@ void sea_node_kill(SeaFunctionGraph *fn, SeaNode *node) {
         SeaNode *input = node->inputs[i];
         if (input) {
             sea_node_remove_user(fn, input, node);
-            if (input->users != 0) sea_node_kill(fn, input);
+            if (input->users == 0) sea_node_kill(fn, input);
         }
     }
 
@@ -345,7 +362,7 @@ void sea_node_kill(SeaFunctionGraph *fn, SeaNode *node) {
     node->kind = SeaNodeKind_Invalid;
 }
 
-void sea_subsume(SeaFunctionGraph *fn, SeaNode *old, SeaNode *new) {
+void sea_node_subsume(SeaFunctionGraph *fn, SeaNode *old, SeaNode *new) {
     Assert(old != new);
     for EachNode(user_node, SeaUser, old->users) {
         SeaNode *user = sea_user_val(user_node);
@@ -594,10 +611,13 @@ SeaNode *sea_create_scope(SeaScopeManager *m, U16 input_reserve) {
 SeaNode *sea_create_region(SeaFunctionGraph *fn, SeaNode **inputs, U16 ctrl_count) {
     SeaNode n = {.kind = SeaNodeKind_Region};
 
+
     sea_node_alloc_inputs(fn, &n, ctrl_count);
     for EachIndex(i, ctrl_count) {
-        inputs[i] = inputs[i];
+        n.inputs[i] = inputs[i];
+        // printf("%p ",n.inputs[i]);
     }
+    // printf("\n");
     n.inputlen = ctrl_count;
 
 

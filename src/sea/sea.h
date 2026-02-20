@@ -293,6 +293,10 @@ void sea_add_function_symbol(SeaModule *m, SeaFunctionProto proto);
 
 void sea_node_print_expr_debug(SeaNode *expr);
 
+// Utils
+void sea_node_keep(SeaFunctionGraph *fn, SeaNode *node);
+void sea_node_unkeep(SeaFunctionGraph *fn, SeaNode *node);
+
 // initalization
 SeaNodeMap sea_map_init(Arena *arena, U64 map_cap);
 
@@ -323,5 +327,5 @@ void sea_scope_update_symbol(SeaFunctionGraph *fn, SeaScopeManager *m, String8 n
 SeaNode *sea_scope_lookup_symbol(SeaScopeManager *m, String8 name);
 SeaNode *sea_duplicate_scope(SeaFunctionGraph *fn, SeaScopeManager *m, B32 isloop);
 SeaNode *sea_merge_scopes(SeaFunctionGraph *fn, SeaScopeManager *m, SeaNode *that_scope);
-
+void sea_scope_end_loop(SeaFunctionGraph *fn, SeaScopeManager *m, SeaNode *head, SeaNode *back, SeaNode *exit);
 #endif

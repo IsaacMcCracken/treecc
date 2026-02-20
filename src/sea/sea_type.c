@@ -535,7 +535,7 @@ SeaType *compute_int_urnary_op(SeaFunctionGraph *fn, SeaNode *n) {
      for EachIndexFrom(i, 1, region->inputlen) {
         SeaNode *input = region->inputs[i];
         // TODO figure out if this is valid or not
-        // if (input)
+        if (input)
         t = sea_type_meet(fn, t, input->type);
      }
      return t;
