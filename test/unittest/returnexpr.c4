@@ -22,5 +22,5 @@ fn int test2() {
         i = i + 1
     }
 
-    return x + i;
+    return x + i
 }

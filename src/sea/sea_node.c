@@ -223,6 +223,8 @@ void sea_node_remove_input(SeaFunctionGraph *fn, SeaNode *node, U16 slot) {
 }
 
 void sea_node_remove_user(SeaFunctionGraph *fn, SeaNode *node, SeaNode *user) {
+   // if (node == user) Trap();
+
     SeaUser *curr = node->users;
     SeaUser *prev = 0;
     while (curr) {
@@ -234,6 +236,8 @@ void sea_node_remove_user(SeaFunctionGraph *fn, SeaNode *node, SeaNode *user) {
             } else {
                 node->users = curr->next;
             }
+
+
             return;
         }
         prev = curr;
@@ -364,10 +368,12 @@ void sea_node_kill(SeaFunctionGraph *fn, SeaNode *node) {
 
 void sea_node_subsume(SeaFunctionGraph *fn, SeaNode *old, SeaNode *new) {
     Assert(old != new);
+    U64 i = 0;
     for EachNode(user_node, SeaUser, old->users) {
         SeaNode *user = sea_user_val(user_node);
         U16 slot = sea_user_slot(user_node);
         sea_node_set_input(fn, user, new, slot);
+        if (user == old) sea_node_remove_user(fn, old, user);
 
     }
     sea_node_kill(fn, old);
@@ -558,32 +564,34 @@ SeaNode *sea_create_loop(SeaFunctionGraph *fn, SeaNode *prev_ctrl) {
     n.inputs[1] = prev_ctrl; // entry
     n.inputlen = 3;
 
-    return sea_peephole(fn, &n);
+    return sea_node_singleton(fn, &n);
+}
+
+
+SeaNode *sea_create_phi(SeaFunctionGraph *fn, SeaNode **inputs, U16 count) {
+    SeaNode n = {.kind = SeaNodeKind_Phi};
+    sea_node_alloc_inputs(fn, &n, count);
+    B32 can_peep = 1;
+    for EachIndex(i, count) {
+        n.inputs[i] = inputs[i];
+        if (inputs[i] == 0) can_peep = 0;
+    }
+
+    n.inputlen = count;
+    if (can_peep) {
+        return sea_peephole(fn, &n);
+    } else {
+        return sea_node_singleton(fn, &n);
+    }
 }
 
 SeaNode *sea_create_phi2(SeaFunctionGraph *fn, SeaNode *region, SeaNode *a, SeaNode *b) {
     SeaNode n = {.kind = SeaNodeKind_Phi};
 
-    sea_node_alloc_inputs(fn, &n, 3);
-    n.inputs[0] = region;
-    n.inputs[1] = a;
-    n.inputs[2] = b;
-    n.inputlen = 3;
+    SeaNode *inputs[] = {region, a, b};
 
-    return sea_peephole(fn, &n);
+    return sea_create_phi(fn, inputs, 3);
 }
-
-SeaNode *sea_create_phi(SeaFunctionGraph *fn, SeaNode **inputs, U16 count) {
-    SeaNode n = {.kind = SeaNodeKind_Phi};
-    sea_node_alloc_inputs(fn, &n, count);
-    for EachIndex(i, count) {
-        n.inputs[i] = inputs[i];
-    }
-
-    n.inputlen = count;
-   return sea_peephole(fn, &n);
-}
-
 SeaNode *sea_create_if(SeaFunctionGraph *fn, SeaNode *ctrl, SeaNode *cond) {
     SeaNode n = {.kind = SeaNodeKind_If};
 

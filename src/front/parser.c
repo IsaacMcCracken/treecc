@@ -292,7 +292,7 @@ void parse_while(Parser *p, SeaFunctionGraph *fn) {
     // Create Loop and add Prev Ctrl as the entry set the new control to loop
     SeaNode *prev_ctrl = sea_scope_lookup_symbol(&p->m, CTRL_STR);
     SeaNode *loop = sea_create_loop(fn, prev_ctrl);
-    sea_scope_insert_symbol(fn, &p->m, CTRL_STR, loop);
+    sea_scope_update_symbol(fn, &p->m, CTRL_STR, loop);
 
     // // duplicate the scope with phis with as second input null
     SeaNode *head_scope = p->m.curr;

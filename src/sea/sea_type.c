@@ -9,6 +9,7 @@ SeaType sea_type_Bot = {.kind = SeaLatticeKind_Bot};
 SeaType sea_type_CtrlLive = {.kind = SeaLatticeKind_CtrlLive};
 SeaType sea_type_CtrlDead = {.kind = SeaLatticeKind_CtrlDead};
 SeaType sea_type_S64 = {.kind = SeaLatticeKind_Int, .i = {.min = min_S64, .max = max_S64}};
+SeaType sea_type_Bool = {.kind = SeaLatticeKind_Int, .i = {.min = 0, .max = 1}};
 
 // If Tuple Data
 SeaType *_ifbothdata[2] = {&sea_type_CtrlLive, &sea_type_CtrlLive};
@@ -96,6 +97,7 @@ void sea_lattice_init(SeaFunctionGraph *fn) {
     sea_type_insert_raw(fn, &sea_type_CtrlLive);
     sea_type_insert_raw(fn, &sea_type_CtrlDead);
     sea_type_insert_raw(fn, &sea_type_S64);
+    sea_type_insert_raw(fn, &sea_type_Bool);
 
     sea_type_insert_raw(fn, &sea_type_IfBoth);
     sea_type_insert_raw(fn, &sea_type_IfNeth);
@@ -289,6 +291,20 @@ SeaType *compute_int_urnary_op(SeaFunctionGraph *fn, SeaNode *n) {
      // TODO move 0,1 to 1,2 because of scheduling
      SeaType *a = n->inputs[1]->type;
      SeaType *b = n->inputs[2]->type;
+
+     // todo(isaac) consider if this is okay
+     if (!a || !b) {
+         switch (op) {
+             case SeaNodeKind_EqualI:
+             case SeaNodeKind_NotEqualI:
+             case SeaNodeKind_LesserEqualI:
+             case SeaNodeKind_LesserThanI:
+             case SeaNodeKind_GreaterEqualI:
+             case SeaNodeKind_GreaterThanI:
+                return &sea_type_Bool;
+            default: return &sea_type_S64;
+         }
+     }
 
      if (a->kind != SeaLatticeKind_Int || b->kind != SeaLatticeKind_Int) {
          return &sea_type_Bot;
@@ -535,7 +551,7 @@ SeaType *compute_int_urnary_op(SeaFunctionGraph *fn, SeaNode *n) {
      for EachIndexFrom(i, 1, region->inputlen) {
         SeaNode *input = region->inputs[i];
         // TODO figure out if this is valid or not
-        if (input)
+        // if (input)
         t = sea_type_meet(fn, t, input->type);
      }
      return t;
@@ -543,11 +559,22 @@ SeaType *compute_int_urnary_op(SeaFunctionGraph *fn, SeaNode *n) {
 
 
  SeaType *compute_phi(SeaFunctionGraph *fn, SeaNode *n) {
-     SeaType *t = &sea_type_Top;
-     for EachIndexFrom(i, 1, n->inputlen) {
-        SeaNode *input = n->inputs[i];
-        t = sea_type_meet(fn, t, input->type);
+     SeaNode *region = n->inputs[0];
+     if (region->kind != SeaNodeKind_Region || region->kind != SeaNodeKind_Loop) {
+         return &sea_type_Bot;
      }
+
+     if (region->inputs[region->inputlen - 1] == 0) return &sea_type_Bot;
+
+    SeaType *t = &sea_type_Top;
+    for EachIndexFrom(i, 1, n->inputlen) {
+        SeaNode *input = n->inputs[i];
+        // TODO it is not always safe to peephole phis
+        // move sea_peephole out of create_phi and
+        // create_region. then peephole once done.
+        // maybe add a garbage collector
+        t = sea_type_meet(fn, t, input->type);
+    }
      return t;
  }
 

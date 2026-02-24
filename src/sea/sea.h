@@ -284,6 +284,7 @@ extern SeaType sea_type_Top;
 extern SeaType sea_type_Bot;
 extern SeaType sea_type_CtrlLive;
 extern SeaType sea_type_CtrlDead;
+extern SeaType sea_type_Bool;
 
 // Module
 SeaModule sea_create_module(void);

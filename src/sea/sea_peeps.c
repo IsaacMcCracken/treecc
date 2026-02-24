@@ -101,6 +101,17 @@ SeaNode *sea_idealize_int(SeaFunctionGraph *fn, SeaNode *node) {
 
 
 SeaNode *sea_idealize_phi(SeaFunctionGraph *fn, SeaNode *node) {
+    /**
+     * x = Phi(5, x) -> Phi(5, 5) -> 5
+     */
+
+    for EachIndexFrom(i, 1, node->inputlen) {
+        if (node->inputs[i] == node) {
+            U16 idx = 1 + ((i - 1) % (node->inputlen - 1));
+            node->inputs[i] = node->inputs[idx];
+        }
+    }
+
     /*
      * Phi(x, x, x) becomes x
      */
