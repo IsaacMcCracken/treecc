@@ -1,0 +1,42 @@
+fn int t1() {
+    int t = 54
+
+    if (t > 50) {
+        t = 32
+    } else {
+        t = 42
+    }
+
+    int x = 34
+
+
+    return x + t
+}
+
+
+
+
+
+fn int test_lots_of_branches() {
+    int t = 54
+
+    if (t > 50) {
+        t = 32
+    } else {
+        t = 42
+    }
+
+    int x = 34
+
+    if (x + t < 100) {
+        t = 12
+    } else {
+        return 3264546
+    }
+
+    if (t == 12) {
+        return x * t
+    }
+
+    return x + t
+}

@@ -61,7 +61,8 @@ SeaFunctionGraph *sea_add_function(
     Arena *arena = arena_alloc(.reserve_size = MB(1)); // TODO heuristic for how much
 
     // This code is ugly as fuck;
-
+    SeaAllocator *alloc = push_item(arena, SeaAllocator);
+    alloc->arena = arena;
     // Yippee
     SeaFunctionGraphNode *fn_node = push_item(arena, SeaFunctionGraphNode);
     SeaFunctionGraph *fn = &fn_node->fn;
@@ -70,7 +71,7 @@ SeaFunctionGraph *sea_add_function(
     {
         fn->proto = proto;
         fn->m = mod;
-        fn->arena = arena;
+        fn->alloc = alloc;
         fn->map = sea_map_init(arena, 101);
 
         sea_lattice_init(fn);

@@ -117,15 +117,18 @@ void scope_data_free(SeaScopeManager *m, SeaScopeData *data) {
 }
 
 void sea_scope_free(SeaFunctionGraph *fn, SeaScopeManager *m, SeaNode *scope) {
+    fprintf(stderr, "sea_scope_free called on %p\n", scope);
+    // remove inputs first so user lists are clean
+    for EachIndex(i, scope->inputlen) {
+        sea_node_set_input(fn, scope, 0, i);
+    }
+    // then free scope metadata
     SeaScopeList *l = scope->vptr;
     SeaScopeData *n = l->head;
     while (n) {
         SeaScopeData *next = n->next;
         scope_data_free(m, n);
         n = next;
-    }
-    for EachIndex(i, scope->inputlen) {
-        sea_node_remove_input(fn, scope, i);
     }
 }
 
@@ -146,15 +149,38 @@ void sea_push_scope(SeaScopeManager *m) {
     data->inputlen = scope->inputlen;
 }
 
-void sea_pop_scope(SeaScopeManager *m) {
+void sea_pop_scope(SeaFunctionGraph *fn, SeaScopeManager *m) {
     SeaNode *scope = m->curr;
     SeaScopeList *l = scope->vptr;
-
     SeaScopeData *popped = l->tail;
+    U16 oldlen = popped->inputlen;
+    for EachIndexFrom(i, oldlen, scope->inputlen) {
+        sea_node_set_input(fn, scope, 0, i);
+    }
     scope->inputlen = popped->inputlen;
     l->tail = popped->prev;
-
+    if (l->tail) {
+        l->tail->next = 0; // sever the forward pointer
+    } else {
+        l->head = 0; // list is now empty
+    }
     scope_data_free(m, popped);
+}
+
+
+void sea_begin_scope(SeaScopeManager *m) {
+    SeaNode *scope = sea_create_scope(m, 512);
+    m->curr = scope;
+}
+
+void sea_end_scope(SeaFunctionGraph *fn, SeaScopeManager *m) {
+    SeaNode *s = m->curr;
+    for EachIndex(i, s->inputlen) {
+        sea_node_set_input(fn, s, 0, i);
+    }
+    m->curr = 0;
+    m->cellpool = 0;
+    m->scopepool = 0;
 }
 
 
@@ -292,7 +318,6 @@ SeaNode *sea_merge_scopes(
 
     SeaNode *region_inputs[] = {0, this_ctrl, that_ctrl};
     SeaNode *region = sea_create_region(fn, region_inputs, 3);
-    sea_node_set_input(fn, this_scope, region, 0);
     sea_node_keep(fn, region);
 
 
@@ -307,6 +332,10 @@ SeaNode *sea_merge_scopes(
     }
 
 
+    fprintf(stderr, "freeing scope %p, inputlen=%u\n", that_scope, that_scope->inputlen);
+    for EachIndex(i, that_scope->inputlen) {
+        fprintf(stderr, "  input[%u] = %p\n", i, that_scope->inputs[i]);
+    }
     sea_scope_free(fn, m, that_scope);
 
     sea_node_unkeep(fn, region);
@@ -325,7 +354,12 @@ void sea_scope_end_loop(SeaFunctionGraph *fn, SeaScopeManager *m, SeaNode *head,
         SeaNode *phi = head->inputs[i];
         Assert(phi->kind == SeaNodeKind_Phi && phi->inputs[0] == loop);
         SeaNode *other = back->inputs[i];
-        sea_node_set_input(fn, phi, other, 2);
+        if (phi == other) {
+            sea_node_subsume(fn, phi, phi->inputs[1]);
+        } else {
+            sea_node_set_input(fn, phi, other, 2);
+        }
+
         SeaNode *in = sea_peephole(fn, phi);
         if (in != phi) {
             sea_node_subsume(fn, phi, in);
@@ -333,6 +367,7 @@ void sea_scope_end_loop(SeaFunctionGraph *fn, SeaScopeManager *m, SeaNode *head,
     }
 
     sea_scope_free(fn, m, back);
+    // sea_scope_free(fn, m, head)
 
     m->curr = exit;
 }

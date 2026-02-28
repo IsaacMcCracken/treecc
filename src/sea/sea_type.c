@@ -84,8 +84,8 @@ void sea_type_insert_raw(SeaFunctionGraph *fn, SeaType *t) {
 void sea_lattice_init(SeaFunctionGraph *fn) {
     // Alloc and set up
     {
-        SeaTypeLattice *lat = push_item(fn->arena, SeaTypeLattice);
-        lat->cells =  push_array(fn->arena, SeaType*, LATTICE_CELL_COUNT);
+        SeaTypeLattice *lat = sea_alloc_item(fn, SeaTypeLattice);
+        lat->cells =  sea_alloc_array(fn, SeaType*, LATTICE_CELL_COUNT);
         lat->cap = LATTICE_CELL_COUNT;
         fn->lat = lat;
     }
@@ -133,7 +133,7 @@ SeaType *sea_type_canonical(SeaFunctionGraph *fn, SeaType *t) {
         *cell = (*cell)->hash_next;
     }
 
-    SeaType *canon = push_item(fn->arena, SeaType);
+    SeaType *canon = sea_alloc_item(fn, SeaType);
 
     *canon = *t;
     canon->hash_next = 0;
@@ -526,6 +526,7 @@ SeaType *compute_int_urnary_op(SeaFunctionGraph *fn, SeaNode *n) {
  }
 
 
+
  SeaType *compute_if(SeaFunctionGraph *fn, SeaNode *ifnode) {
 
      // test prev control
@@ -557,6 +558,13 @@ SeaType *compute_int_urnary_op(SeaFunctionGraph *fn, SeaNode *n) {
      return t;
  }
 
+ SeaType *compute_loop(SeaFunctionGraph *fn, SeaNode *node) {
+     if (node->inputs[node->inputlen-1] == 0) {
+         return &sea_type_CtrlLive;
+     }
+
+     return compute_region(fn, node);
+ }
 
  SeaType *compute_phi(SeaFunctionGraph *fn, SeaNode *n) {
      SeaNode *region = n->inputs[0];
@@ -615,12 +623,20 @@ SeaType *sea_compute_type(SeaFunctionGraph *fn, SeaNode *n) {
             return compute_phi(fn, n);
         }
 
-        case SeaNodeKind_Loop:
+        case SeaNodeKind_Loop: {
+            return compute_loop(fn, n);
+        }
         case SeaNodeKind_Region: {
             return compute_region(fn, n);
         }
         case SeaNodeKind_Return: {
             return &sea_type_CtrlLive;
+        }
+        case SeaNodeKind_Dead: {
+            return &sea_type_CtrlDead;
+        }
+        case SeaNodeKind_Stop: {
+            return &sea_type_Bot;
         }
         default: {
             fprintf(stderr, "Unknown Node Kind %d", (int)n->kind);

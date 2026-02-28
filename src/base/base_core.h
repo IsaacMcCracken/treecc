@@ -935,6 +935,7 @@ internal B32 u128_match(U128 a, U128 b);
 
 internal U32 u32_from_u64_saturate(U64 x);
 internal U64 u64_up_to_pow2(U64 x);
+internal U64 u64_log2_floor(U64 x);
 internal S32 extend_sign32(U32 x, U32 size);
 internal S64 extend_sign64(U64 x, U64 size);
 

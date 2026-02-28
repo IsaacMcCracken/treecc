@@ -252,7 +252,7 @@ void parse_if(Parser *p, SeaFunctionGraph *fn) {
     SeaNode *tscope = p->m.curr;
     SeaNode *fscope = sea_duplicate_scope(fn, &p->m, 0);
 
-    sea_scope_update_symbol(fn, &p->m, CTRL_STR, tnode);
+    sea_node_set_ctrl(fn, p->m.curr, tnode);
 
     advance_token(p);
     skip_newlines(p);
@@ -264,7 +264,7 @@ void parse_if(Parser *p, SeaFunctionGraph *fn) {
 
     // Parse the false case
     p->m.curr = fscope;
-    sea_scope_update_symbol(fn, &p->m, CTRL_STR, fnode);
+    sea_node_set_ctrl(fn, p->m.curr, fnode);
 
     skip_newlines(p);
     tok = current_token(p);
@@ -282,7 +282,7 @@ void parse_if(Parser *p, SeaFunctionGraph *fn) {
     }
 
     SeaNode *region = sea_merge_scopes(fn, &p->m, tscope);
-    sea_scope_update_symbol(fn, &p->m, CTRL_STR, region);
+    sea_node_set_ctrl(fn, p->m.curr, region);
 }
 
 
@@ -290,9 +290,9 @@ void parse_while(Parser *p, SeaFunctionGraph *fn) {
     advance_token(p);
 
     // Create Loop and add Prev Ctrl as the entry set the new control to loop
-    SeaNode *prev_ctrl = sea_scope_lookup_symbol(&p->m, CTRL_STR);
+    SeaNode *prev_ctrl = sea_node_get_ctrl(fn, p->m.curr);
     SeaNode *loop = sea_create_loop(fn, prev_ctrl);
-    sea_scope_update_symbol(fn, &p->m, CTRL_STR, loop);
+    sea_node_set_ctrl(fn, p->m.curr, loop);
 
     // // duplicate the scope with phis with as second input null
     SeaNode *head_scope = p->m.curr;
@@ -317,13 +317,12 @@ void parse_while(Parser *p, SeaFunctionGraph *fn) {
     SeaNode *fnode =    sea_create_proj(fn, ifnode, 0);
     sea_node_unkeep(fn, ifnode);
     SeaNode *tnode =    sea_create_proj(fn, ifnode, 1);
-    sea_scope_insert_symbol(fn, &p->m, CTRL_STR, tnode);
 
 
-    SeaNode *back_scope = p->m.curr;
+    SeaNode *body_scope = p->m.curr;
+    sea_node_set_ctrl(fn, body_scope, tnode);
     SeaNode *exit_scope = sea_duplicate_scope(fn, &p->m, 0);
-    p->m.curr = exit_scope;
-    sea_scope_insert_symbol(fn, &p->m, CTRL_STR, fnode);
+    sea_node_set_ctrl(fn, exit_scope, fnode);
 
     advance_token(p);
     skip_newlines(p);
@@ -333,8 +332,11 @@ void parse_while(Parser *p, SeaFunctionGraph *fn) {
         parse_block(p, fn);
     }
 
-    sea_scope_end_loop(fn, &p->m, head_scope, back_scope, exit_scope);
+    p->m.curr = exit_scope;
 
+    sea_scope_end_loop(fn, &p->m, head_scope, body_scope, exit_scope);
+
+    sea_scope_free(fn, &p->m, head_scope);
 }
 
 void parse_local_decl(Parser *p, SeaFunctionGraph *fn) {
@@ -363,6 +365,18 @@ void parse_local_decl(Parser *p, SeaFunctionGraph *fn) {
 
 }
 
+SeaNode *parse_return(Parser *p, SeaFunctionGraph *fn) {
+    advance_token(p);
+    SeaNode *expr = parse_expr(p, fn);
+    SeaNode *result = sea_peephole(fn, expr);
+    SeaNode *ctrl = sea_node_get_ctrl(fn, p->m.curr);
+    SeaNode *ret = sea_create_return(fn, ctrl, expr);
+    // add return to the stop node
+    sea_add_return(fn, ret);
+    sea_node_set_ctrl(fn, p->m.curr, sea_create_dead_ctrl(fn));
+    return ret;
+}
+
 void parse_stmt(Parser *p, SeaFunctionGraph *fn) {
     Token tok = current_token(p);
     switch (tok.kind) {
@@ -370,17 +384,7 @@ void parse_stmt(Parser *p, SeaFunctionGraph *fn) {
             parse_block(p, fn);
         } break;
         case TokenKind_Return: {
-            advance_token(p);
-            SeaNode *expr = parse_expr(p, fn);
-            SeaNode *result = sea_peephole(fn, expr);
-            // TODO add control stuff (FIXXX)
-            if (result->kind == SeaNodeKind_ConstInt) {
-                printf("%.*s() = %lld\n", str8_varg(fn->proto.name), expr->vint);
-            } else {
-                printf("%.*s() failed(%d)\n", str8_varg(fn->proto.name), (int)expr->kind);
-
-            }
-            SeaNode *ret = sea_create_return(fn, fn->start, expr);
+            parse_return(p, fn);
         } break;
         case TokenKind_Identifier: {
             // TODO see if its a user defined type
@@ -437,7 +441,7 @@ void parse_block(Parser *p, SeaFunctionGraph *fn) {
     }
 
     advance_token(p);
-    sea_pop_scope(&p->m);
+    sea_pop_scope(fn, &p->m);
 }
 
 
@@ -519,18 +523,14 @@ void parse_func(Parser *p) {
 
     if (tok.kind == TokenKind_LBrace) {
         Temp temp = temp_begin(p->m.arena);
-        SeaNode *scope = sea_create_scope(&p->m, 128);
-        p->m.curr = scope;
 
+        sea_begin_scope(&p->m);
         SeaFunctionGraph *fn = sea_add_function(p->mod, &p->m, proto);
         parse_block(p, fn);
+        sea_end_scope(fn, &p->m);
 
-        p->m.curr = 0;
-        p->m.cellpool = 0;
-        p->m.scopepool = 0;
         temp_end(temp);
 
-        printf("allocated %d bytes %d unused.\n", fn->arena->pos, fn->deadspace);
     } else {
         sea_add_function_symbol(p->mod, proto);
     }

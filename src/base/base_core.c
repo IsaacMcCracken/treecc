@@ -78,6 +78,20 @@ u64_up_to_pow2(U64 x){
   return(x);
 }
 
+internal U64
+u64_log2_floor(U64 x){
+  U64 r = 0;
+
+  if (x >= (1ULL << 32)) { x >>= 32; r += 32; }
+  if (x >= (1ULL << 16)) { x >>= 16; r += 16; }
+  if (x >= (1ULL << 8))  { x >>= 8;  r += 8;  }
+  if (x >= (1ULL << 4))  { x >>= 4;  r += 4;  }
+  if (x >= (1ULL << 2))  { x >>= 2;  r += 2;  }
+  if (x >= (1ULL << 1))  {           r += 1;  }
+
+  return(r);
+}
+
 internal S32
 extend_sign32(U32 x, U32 size){
   U32 high_bit = size * 8;
@@ -249,11 +263,11 @@ internal B32
 memory_is_zero(void *ptr, U64 size)
 {
   B32 result = 1;
-  
+
   // break down size
   U64 extra = (size&0x7);
   U64 count8 = (size >> 3);
-  
+
   // check with 8-byte stride
   U64 *p64 = (U64*)ptr;
   if(result)
@@ -267,7 +281,7 @@ memory_is_zero(void *ptr, U64 size)
       }
     }
   }
-  
+
   // check extra
   if(result)
   {
@@ -281,7 +295,7 @@ memory_is_zero(void *ptr, U64 size)
       }
     }
   }
-  
+
   done:;
   return result;
 }
@@ -493,7 +507,7 @@ date_time_from_unix_time(U64 unix_time)
   date.sec      = (U32)unix_time % 60;
   date.min      = (U32)(unix_time / 60) % 60;
   date.hour     = (U32)(unix_time / 3600) % 24;
-  
+
   for(;;)
   {
     for(date.month = 0; date.month < 12; ++date.month)
@@ -534,7 +548,7 @@ date_time_from_unix_time(U64 unix_time)
     ++date.year;
   }
   exit:;
-  
+
   return date;
 }
 

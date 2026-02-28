@@ -3,6 +3,19 @@
 
 #include "sea.h"
 
+typedef struct FreeNode FreeNode;
+struct FreeNode {
+    FreeNode *next;
+};
+
+struct SeaAllocator {
+    Arena *arena;
+    FreeNode *small_buckets[8]; // 0 - 64 bytes in increments of 8
+    FreeNode *huge_buckets[6]; // 128 to 4096 bytes in increments of powers of 2
+};
+
+
+
 extern SeaType sea_type_IfBoth;
 extern SeaType sea_type_IfNeth;
 extern SeaType sea_type_IfTrue;
@@ -12,7 +25,7 @@ extern SeaType sea_type_IfFalse;
 void sea_node_set_input(SeaFunctionGraph *fn, SeaNode *node, SeaNode *input, U16 slot);
 U16 sea_node_append_input(SeaFunctionGraph *fn, SeaNode *node, SeaNode *input);
 void sea_node_remove_input(SeaFunctionGraph *fn, SeaNode *node, U16 slot);
-void sea_node_remove_user(SeaFunctionGraph *fn, SeaNode *node, SeaNode *user);
+void sea_node_remove_user(SeaFunctionGraph *fn, SeaNode *node, SeaNode *user, U16 slot);
 void sea_node_kill(SeaFunctionGraph *fn, SeaNode *node);
 void sea_node_subsume(SeaFunctionGraph *fn, SeaNode *old, SeaNode *new);
 SeaNode *sea_user_val(SeaUser *user);

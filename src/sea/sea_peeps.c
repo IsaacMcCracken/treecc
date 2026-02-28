@@ -1,5 +1,8 @@
 #include "sea_internal.h"
 
+
+#define DISABLE_PEEPS 0
+
 SeaNode *sea_idealize_int(SeaFunctionGraph *fn, SeaNode *node) {
     // constfold urnary expression
     if (node->kind == SeaNodeKind_NegateI && (node->inputs[1]->kind == SeaNodeKind_ConstInt)) {
@@ -115,17 +118,18 @@ SeaNode *sea_idealize_phi(SeaFunctionGraph *fn, SeaNode *node) {
     /*
      * Phi(x, x, x) becomes x
      */
-   SeaNode *live = 0;
-   SeaNode *region = node->inputs[0];
-   for EachIndexFrom(i, 1, node->inputlen) {
-       if (region->inputs[i]->type != &sea_type_CtrlDead && node->inputs[i] != node) {
-           if (live == 0 || live == node->inputs[i]) {
-               live = node->inputs[i];
-           } else {
-               live = 0;
-               break;
-           }
-       }
+    SeaNode *live = 0;
+    SeaNode *region = node->inputs[0];
+    for EachIndexFrom(i, 1, node->inputlen) {
+        SeaNode *in = node->inputs[i];
+        if (region->inputs[i]->type != &sea_type_CtrlDead && in != node) {
+            if (live == 0 || live == in) {
+                live = node->inputs[i];
+            } else {
+                live = 0;
+                break;
+            }
+        }
    }
 
    if (live) return live;
@@ -173,6 +177,33 @@ SeaNode *sea_idealize_phi(SeaFunctionGraph *fn, SeaNode *node) {
     return node;
 }
 
+SeaNode *sea_idealize_return(SeaFunctionGraph *fn, SeaNode *node) {
+    if (node->inputs[0]->type == &sea_type_CtrlDead) {
+        return node->inputs[0];
+    }
+
+    return node;
+}
+
+SeaNode *sea_idealize_stop(SeaFunctionGraph *fn, SeaNode *node) {
+    for EachIndex(i, node->inputlen) {
+        SeaNode *input = node->inputs[i];
+        if (input->type == &sea_type_CtrlDead) {
+            sea_node_remove_input(fn, node, i);
+            i -= 1;
+        }
+    }
+
+
+    printf("[ ");
+    for EachIndex(i, node->inputlen) {
+        printf("%p, ", node->inputs[i]);
+    }
+    printf("]\n");
+
+    return node;
+}
+
 
 SeaNode *sea_idealize_proj(SeaFunctionGraph *fn, SeaNode *node) {
     SeaNode *ctrl = node->inputs[0];
@@ -202,7 +233,7 @@ SeaNode *sea_idealize_proj(SeaFunctionGraph *fn, SeaNode *node) {
 }
 
 SeaNode *sea_idealize_region(SeaFunctionGraph *fn, SeaNode *node) {
-    if (node->inputs[node->inputlen - 1] == 0) return 0; // inprogress what the fuck are we doing
+    if (node->inputs[node->inputlen - 1] == 0) return node; // inprogress what the fuck are we doing
     // Find dead input
     U16 path = 0;
     for EachIndexFrom(i, 1, node->inputlen) {
@@ -215,21 +246,29 @@ SeaNode *sea_idealize_region(SeaFunctionGraph *fn, SeaNode *node) {
 
     // if there is a dead input
     if (path != 0) {
-        for EachNode(user_node, SeaUser, node->users) {
-            SeaNode *user = sea_user_val(user_node);
+        SeaUser *u = node->users;
+        while (u) {
+            SeaUser *next = u->next;
+            SeaNode *user = sea_user_val(u);
             if (user->kind == SeaNodeKind_Phi) {
                 sea_node_remove_input(fn, user, path);
             }
+            u = next;
         }
         sea_node_remove_input(fn, node, path);
-
         if (node->inputlen == 2) {
-            // for EachNode(user_node, SeaUser, node->users) {
-            //     SeaNode *user = sea_user_val(user_node);
-            //     if (user->kind == SeaNodeKind_Phi) {
-            //         NotImplemented;
-            //     }
-            // }
+            u = node->users;
+            sea_node_keep(fn, node);
+            while (u) {
+                SeaUser *next = u->next;
+                SeaNode *phi = sea_user_val(u);
+                if (phi->kind == SeaNodeKind_Phi) {
+                    sea_node_subsume(fn, phi, phi->inputs[1]);
+                }
+                u = next;
+            }
+            sea_node_unkeep(fn, node);
+
             return node->inputs[1];
         }
     }
@@ -240,10 +279,10 @@ SeaNode *sea_idealize_region(SeaFunctionGraph *fn, SeaNode *node) {
 
 SeaNode *sea_peephole(SeaFunctionGraph *fn, SeaNode *node) {
     Assert(node->kind != SeaNodeKind_Scope);
-    node = sea_node_singleton(fn, node);
 
     node->type = sea_compute_type(fn, node);
 
+    if (DISABLE_PEEPS) return node;
     SeaNode *new = node;
     switch (node->kind) {
         case SeaNodeKind_Not:
@@ -272,6 +311,14 @@ SeaNode *sea_peephole(SeaFunctionGraph *fn, SeaNode *node) {
 
         case SeaNodeKind_Phi: {
             new = sea_idealize_phi(fn, node);
+        } break;
+
+        case SeaNodeKind_Return: {
+            new = sea_idealize_return(fn, node);
+        } break;
+
+        case SeaNodeKind_Stop: {
+            new = sea_idealize_stop(fn, node);
         } break;
     }
 

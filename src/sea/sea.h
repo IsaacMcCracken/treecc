@@ -8,6 +8,7 @@ typedef struct SeaModule SeaModule;
 typedef struct SeaNode SeaNode;
 typedef struct SeaTypeLattice SeaTypeLattice;
 typedef struct SeaType SeaType;
+typedef struct SeaAllocator SeaAllocator;
 
 
 typedef U8 SeaDataKind;
@@ -123,6 +124,7 @@ typedef enum {
 
     SeaNodeKind_Start,
     SeaNodeKind_Stop,
+    SeaNodeKind_Dead,
     SeaNodeKind_Return,
     SeaNodeKind_If,
     SeaNodeKind_Region,
@@ -248,8 +250,7 @@ struct SeaScopeManager {
 typedef struct SeaFunctionGraph SeaFunctionGraph;
 struct SeaFunctionGraph {
     SeaModule *m;
-    Arena *arena;
-    Arena *tmp;
+    SeaAllocator *alloc;
     SeaFunctionProto proto;
     U64 deadspace;
     SeaNodeMap map;
@@ -297,10 +298,22 @@ void sea_node_print_expr_debug(SeaNode *expr);
 // Utils
 void sea_node_keep(SeaFunctionGraph *fn, SeaNode *node);
 void sea_node_unkeep(SeaFunctionGraph *fn, SeaNode *node);
+void sea_add_return(SeaFunctionGraph *fn, SeaNode *ret);
+B32 sea_node_is_cfg(SeaNode *node);
+void sea_node_set_ctrl(SeaFunctionGraph *fn, SeaNode *node, SeaNode *ctrl);
+SeaNode *sea_node_get_ctrl(SeaFunctionGraph *fn, SeaNode *node);
+void sea_graphviz(const char *filepath, SeaFunctionGraph *fn);
+void *sea_alloc(SeaFunctionGraph *fn, U64 size);
+#define sea_alloc_item(fn, T) sea_alloc(fn, sizeof(T))
+#define sea_alloc_array(fn, T, count) sea_alloc(fn, sizeof(T)*(count))
+void sea_free(SeaFunctionGraph *fn, void *ptr, U64 size);
+#define sea_free_item(fn, item) sea_free(fn, item, sizeof(*(item)))
+#define sea_free_array(fn, arr, count) sea_free(fn, arr, sizeof(*(arr))*(count))
 
 // initalization
 SeaNodeMap sea_map_init(Arena *arena, U64 map_cap);
-
+SeaNode *sea_map_lookup(SeaNodeMap *map, SeaNode *node);
+void sea_map_insert(SeaNodeMap *map, SeaNode *node);
 // Optimizations
 SeaNode *sea_peephole(SeaFunctionGraph *fn, SeaNode *node);
 
@@ -315,14 +328,17 @@ SeaNode *sea_create_return(SeaFunctionGraph *fn, SeaNode *prev_ctrl, SeaNode *ex
 SeaNode *sea_create_proj(SeaFunctionGraph *fn, SeaNode *input, U64 v);
 SeaNode *sea_create_if(SeaFunctionGraph *fn, SeaNode *ctrl, SeaNode *cond);
 SeaNode *sea_create_loop(SeaFunctionGraph *fn, SeaNode *prev_ctrl);
-
+SeaNode *sea_create_dead_ctrl(SeaFunctionGraph *fn);
 SeaNode *sea_create_region(SeaFunctionGraph *fn, SeaNode **inputs, U16 ctrl_count);
 SeaNode *sea_create_phi2(SeaFunctionGraph *fn, SeaNode *region, SeaNode *a, SeaNode *b);
 
 // Scope Functionality For Building SSA
+void sea_begin_scope(SeaScopeManager *m);
+void sea_end_scope(SeaFunctionGraph *fn, SeaScopeManager *m);
+void sea_scope_free(SeaFunctionGraph *fn, SeaScopeManager *m, SeaNode *scope);
 SeaNode *sea_create_scope(SeaScopeManager *m, U16 input_reserve);
 void sea_push_scope(SeaScopeManager *m);
-void sea_pop_scope(SeaScopeManager *m);
+void sea_pop_scope(SeaFunctionGraph *fn, SeaScopeManager *m);
 void sea_scope_insert_symbol(SeaFunctionGraph *fn, SeaScopeManager *m, String8 name, SeaNode *node);
 void sea_scope_update_symbol(SeaFunctionGraph *fn, SeaScopeManager *m, String8 name, SeaNode *node);
 SeaNode *sea_scope_lookup_symbol(SeaScopeManager *m, String8 name);
