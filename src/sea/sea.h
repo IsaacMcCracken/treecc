@@ -11,56 +11,6 @@ typedef struct SeaType SeaType;
 typedef struct SeaAllocator SeaAllocator;
 
 
-typedef U8 SeaDataKind;
-enum {
-  SeaDataKind_Void,
-  SeaDataKind_I64,
-  SeaDataKind_Ctrl,
-  SeaDataKind_Memory,
-  SeaDataKind_COUNT,
-};
-
-typedef U8 SeaLatticeKind;
-enum {
-    SeaLatticeKind_Top,
-    SeaLatticeKind_Bot,
-    SeaLatticeKind_CtrlLive,
-    SeaLatticeKind_CtrlDead,
-    SeaLatticeKind_SIMPLE,
-    SeaLatticeKind_Int,
-    SeaLatticeKind_Tuple,
-};
-
-
-typedef struct SeaTypeInt SeaTypeInt;
-struct SeaTypeInt {
-    S64 min;
-    S64 max;
-};
-
-typedef struct SeaTypeTuple SeaTypeTuple;
-struct SeaTypeTuple {
-    SeaType **elems;
-    U64 count;
-};
-
-typedef struct SeaType SeaType;
-struct SeaType {
-    SeaType *hash_next;
-    SeaLatticeKind kind;
-    union {
-        SeaTypeInt i;
-        F64 f64;
-        F32 f32;
-        SeaTypeTuple tup;
-    };
-};
-
-struct SeaTypeLattice {
-    SeaType **cells;
-    U64 cap;
-};
-
 
 
 typedef struct SeaField SeaField;
@@ -107,6 +57,64 @@ struct SeaSymbols {
     U64 count;
     SeaSymbolEntry *first;
     SeaSymbolEntry *last;
+};
+
+typedef U8 SeaDataKind;
+enum {
+  SeaDataKind_Void,
+  SeaDataKind_I64,
+  SeaDataKind_Ctrl,
+  SeaDataKind_Memory,
+  SeaDataKind_COUNT,
+};
+
+typedef U8 SeaLatticeKind;
+enum {
+    SeaLatticeKind_Top,
+    SeaLatticeKind_Bot,
+    SeaLatticeKind_CtrlLive,
+    SeaLatticeKind_CtrlDead,
+    SeaLatticeKind_SIMPLE,
+    SeaLatticeKind_Int,
+    SeaLatticeKind_Tuple,
+    SeaLatticeKind_Struct,
+};
+
+
+typedef struct SeaTypeInt SeaTypeInt;
+struct SeaTypeInt {
+    S64 min;
+    S64 max;
+};
+
+typedef struct SeaTypeStruct SeaTypeStruct;
+struct SeaTypeStruct {
+    String8 name;
+    SeaFieldArray fields;
+};
+
+typedef struct SeaTypeTuple SeaTypeTuple;
+struct SeaTypeTuple {
+    SeaType **elems;
+    U64 count;
+};
+
+typedef struct SeaType SeaType;
+struct SeaType {
+    SeaType *hash_next;
+    SeaLatticeKind kind;
+    union {
+        SeaTypeStruct s;
+        SeaTypeInt i;
+        F64 f64;
+        F32 f32;
+        SeaTypeTuple tup;
+    };
+};
+
+struct SeaTypeLattice {
+    SeaType **cells;
+    U64 cap;
 };
 
 typedef U16 SeaNodeKind;
@@ -195,6 +203,15 @@ struct SeaNode {
     SeaType *type;
 };
 
+typedef struct SeaWorkList SeaWorkList;
+struct SeaWorkList {
+    SeaNode **items;
+    U64 itemlen;
+    U64 itemcap;
+    U64 hashcap;
+    U32 *hashset; // gvn as key
+};
+
 typedef struct SeaNodeMapCell SeaNodeMapCell;
 struct SeaNodeMapCell {
     SeaNode *node;
@@ -257,6 +274,10 @@ struct SeaFunctionGraph {
     SeaTypeLattice *lat;
     SeaNode *start;
     SeaNode *stop;
+
+    // Optimization Data
+    SeaWorkList *wl;
+
 };
 
 typedef struct SeaFunctionGraphNode SeaFunctionGraphNode;

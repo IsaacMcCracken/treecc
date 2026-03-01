@@ -41,6 +41,7 @@ enum {
   TokenKind_Else,
   TokenKind_While,
 
+  TokenKind_Struct,
   TokenKind_Fn,
 
   TokenKind_EOF,

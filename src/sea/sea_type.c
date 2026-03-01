@@ -51,24 +51,55 @@ SeaType sea_type_IfFalse = {
 };
 
 U64 sea_type_hash(SeaType *t) {
-    SeaType copy = *t;
-    copy.hash_next = 0;
+    U64 h = 0xcbf29ce484222325ULL;
+
+    // mix in kind
+    h ^= (U64)t->kind;
+    h *= 0x00000100000001b3ULL;
+
     switch (t->kind) {
-        case SeaLatticeKind_Tuple: {
-            U8 *buf = (U8*)t->tup.elems;
-            U64 count = sizeof(SeaType*) * t->tup.count;
-            U64 hash = u64_hash_from_str8((String8){buf, count});
-            hash <<= 4;
-            hash >>= 4;
-            hash |= ((t->tup.count & 0x0F) << 60);
-            return hash;
+        case SeaLatticeKind_Top:
+        case SeaLatticeKind_Bot:
+        case SeaLatticeKind_CtrlLive:
+        case SeaLatticeKind_CtrlDead:
+        case SeaLatticeKind_SIMPLE: {
+            // kind is the whole identity
         } break;
 
-        default: {
-            U8 *buf = (U8*)&copy;
-            return u64_hash_from_str8((String8){buf, sizeof(copy)});
+        case SeaLatticeKind_Int: {
+            h ^= (U64)t->i.min;
+            h *= 0x00000100000001b3ULL;
+            h ^= (U64)t->i.max;
+            h *= 0x00000100000001b3ULL;
+        } break;
+
+        case SeaLatticeKind_Tuple: {
+            h ^= t->tup.count;
+            h *= 0x00000100000001b3ULL;
+            for EachIndex(i, t->tup.count) {
+                h ^= (U64)t->tup.elems[i]; // pointer identity, types are interned
+                h *= 0x00000100000001b3ULL;
+            }
+        } break;
+
+        case SeaLatticeKind_Struct: {
+            U8 *buf = (U8*)t->s.name.str;
+            for (U64 i = 0; i < t->s.name.size; i++) {
+                h ^= buf[i];
+                h *= 0x00000100000001b3ULL;
+            }
         } break;
     }
+
+    // avalanche
+    h ^= h >> 33;
+    h *= 0xff51afd7ed558ccdULL;
+    h ^= h >> 33;
+    h *= 0xc4ceb9fe1a85ec53ULL;
+    h ^= h >> 33;
+
+    return h;
+}
 }
 
 void sea_type_insert_raw(SeaFunctionGraph *fn, SeaType *t) {
@@ -108,19 +139,33 @@ void sea_lattice_init(SeaFunctionGraph *fn) {
 
 B32 sea_type_equal(SeaType *a, SeaType *b) {
     if (a->kind != b->kind) return 0;
-
     switch (a->kind) {
+        case SeaLatticeKind_Top:
+        case SeaLatticeKind_Bot:
+        case SeaLatticeKind_CtrlLive:
+        case SeaLatticeKind_CtrlDead: {
+            return 1; // kind is the whole identity
+        } break;
+        case SeaLatticeKind_Int: {
+            return a->i.min == b->i.min && a->i.max == b->i.max;
+        } break;
         case SeaLatticeKind_Tuple: {
             if (a->tup.count != b->tup.count) return 0;
             return MemoryMatchTyped(a->tup.elems, b->tup.elems, a->tup.count);
         } break;
-
-        default: {
-            SeaType ca = *a; SeaType cb = *b;
-            ca.hash_next = 0; cb.hash_next = 0;
-            return MemoryMatchStruct(&ca, &cb);
+        case SeaLatticeKind_Struct: {
+            if (!str8_match(a->s.name, b->s.name, 0)) return 0;
+            if (a->s.fields.count != b->s.fields.count) return 0;
+            for EachIndex(i, a->s.fields.count) {
+                SeaField *fa = &a->s.fields.fields[i];
+                SeaField *fb = &b->s.fields.fields[i];
+                if (!str8_match(fa->name, fb->name, 0)) return 0;
+                if (fa->type != fb->type) return 0; // pointer identity since types are interned
+            }
+            return 1;
         } break;
     }
+    return 0;
 }
 
 SeaType *sea_type_canonical(SeaFunctionGraph *fn, SeaType *t) {
@@ -510,9 +555,9 @@ SeaType *compute_int_urnary_op(SeaFunctionGraph *fn, SeaNode *n) {
                 out.min = val;
                 out.max = val;
             } else if (sea_type_is_const_int(b)) {
-                // TODO fix for sign
-                out.min = 0;
-                out.max = sea_type_const_int_val(b) - 1;
+                S64 bval = sea_type_const_int(b);
+                out.min = Min(0, a.min % bval);
+                out.max = bval - 1;
             } else {
                 // TODO this is probably not correct behaviour
                 out.min = type_min;
@@ -643,4 +688,21 @@ SeaType *sea_compute_type(SeaFunctionGraph *fn, SeaNode *n) {
             Trap();
         }
      }
+ }
+
+
+ SeaType *sea_type_make_struct(
+     SeaModule *m,
+     String8 name,
+     SeaFieldArray fields
+ ) {
+     SeaType t = (SeaType) {
+         .kind = SeaLatticeKind_Struct,
+         .s = (SeaTypeStruct){
+             .name = name,
+             .fields = fields,
+         }
+     }
+
+     return sea_type_canonical(fn, &t);
  }

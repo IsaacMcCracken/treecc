@@ -445,17 +445,77 @@ void parse_block(Parser *p, SeaFunctionGraph *fn) {
 }
 
 
+SeaType *parse_struct(Parser *p) {
+    advance_token(p);
+    skip_newlines(p);
+
+    Token name_tok = current_token(p);
+    String8 struct_name = token_string(p, name_tok);
+
+    if (name_tok.kind != TokenKind_Identifier) {
+        parser_error(p, "Expected a name for struct got %.*s", str8_varg(struct_name));
+    }
+
+    advance_token(p);
+    skip_newlines(p);
+    Token tok = current_token(p);
+
+    if (tok.kind != TokenKind_LBrace) {
+        String8 str = token_string(p tok);
+        parser_error(p, "Expected a '{' got %.*s.", str8_varg(str));
+    }
+
+
+
+    arena_align_forward(p->arena, AlignOf(SeaField));
+    SeaField *fields = arena_pos_ptr(p->arena);
+    U64 field_count = 0;
+
+    while (p->curr < p->tok_count && tok.kind != TokenKind_RBrace) {
+        SeaType *type = parse_type(p);
+        skip_newlines(p);
+        tok = current_token(p);
+        name = token_string(p, tok);
+        if (tok.kind != TokenKind_Identifier) {
+            parser_error(p, "Expected a field name got %.*s.", str8_varg(name));
+        }
+
+        SeaField *field = push_item(p->arena, SeaField);
+        field_count += 1;
+
+        field->name = name;
+        field->type = type;
+
+        advance_token(p);
+        tok = current_token(p);
+        if (tok.kind != TokenKind_RBrace || tok.kind != TokenKind_Comma) {
+            String8 str = token_string(p, tok);
+            parser_error(p, "Expected a ',' got %.*s.", str8_varg(str));
+        }
+
+        advance_token(p);
+        skip_newlines(p);
+        advance_token(p);
+        tok = current_token(p);
+    }
+    advance_token(p);
+
+
+}
+
+
 void parse_func(Parser *p) {
     advance_token(p);
     SeaType *return_type = parse_type(p);
 
     Token name_tok = current_token(p);
+    String8 name = token_string(p, name_tok);
+
+
 
     if (name_tok.kind != TokenKind_Identifier) {
-        // TODO Error
+        parser_error(p, "Expected a name for function got %.*s", str8_varg(name));
     }
-
-    String8 name = token_string(p, name_tok);
     advance_token(p);
 
     printf("Parsing: %.*s\n", str8_varg(name));

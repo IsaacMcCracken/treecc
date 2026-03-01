@@ -11,6 +11,7 @@ char *keywords[] = {
     "if",
     "else",
     "while",
+    "struct",
 };
 
 char *keyword_enums[] = {
@@ -20,7 +21,7 @@ char *keyword_enums[] = {
     "TokenKind_If",
     "TokenKind_Else",
     "TokenKind_While",
-
+    "TokenKind_Struct",
 };
 
 U64 keyword_count() {

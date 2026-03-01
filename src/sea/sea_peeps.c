@@ -277,12 +277,8 @@ SeaNode *sea_idealize_region(SeaFunctionGraph *fn, SeaNode *node) {
 }
 
 
-SeaNode *sea_peephole(SeaFunctionGraph *fn, SeaNode *node) {
-    Assert(node->kind != SeaNodeKind_Scope);
 
-    node->type = sea_compute_type(fn, node);
-
-    if (DISABLE_PEEPS) return node;
+SeaNode *sea_idealize(SeaFunctionGraph *fn, SeaNode *node) {
     SeaNode *new = node;
     switch (node->kind) {
         case SeaNodeKind_Not:
@@ -322,7 +318,53 @@ SeaNode *sea_peephole(SeaFunctionGraph *fn, SeaNode *node) {
         } break;
     }
 
-    SeaNode *result = sea_dead_code_elim(fn, node, new);
+
+    return new;
+}
+
+SeaNode *sea_peephole_opt(SeaFunctionGraph *fn, SeaNode *node) {
+
+
+    // Todo remove constant behavior from sea_idealize_int
+    // into just checking if the type is constant then
+    // also maybe separtating sea_idealize_int into opts
+    // per kind rather than all arithmetic
+    SeaType *old = sea_compute_type(fn, node);
+    node->type = old;
+
+    // replace identical node with its canonical node
+    if (node->gvn == 0) {
+        SeaNode *single = sea_map_lookup(&fn->map, node);
+        if (single) {
+            // todo join types because types might be different
+            // single->type = sea_type_join(fn, node->type, single->type);
+            return sea_dead_code_elim(fn, node, single);
+        } else {
+            U32 gvn = sea_node_hash(SeaNode *new = sea_idealize(fn, node);
+
+
+                SeaNode *result = sea_dead_code_elim(fn, node, new);node);
+            node->gvn = gvn;
+            sea_map_insert(&fn->map, node);
+        }
+    }
+
+    SeaNode *ideal = sea_idealize(fn, node);
+    return ideal;
+}
+
+SeaNode *sea_peephole(SeaFunctionGraph *fn, SeaNode *node) {
+    Assert(node->kind != SeaNodeKind_Scope);
+    node->type = sea_compute_type(fn, node);
+
+    if (DISABLE_PEEPS) return node;
+
+
+    SeaNode *result = sea_peephole_opt(fn, node);
+
+    if (result != node) {
+        result = sea_dead_code_elim(fn, node, result);
+    }
 
     return result;
 }
