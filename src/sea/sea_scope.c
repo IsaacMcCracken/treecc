@@ -117,7 +117,6 @@ void scope_data_free(SeaScopeManager *m, SeaScopeData *data) {
 }
 
 void sea_scope_free(SeaFunctionGraph *fn, SeaScopeManager *m, SeaNode *scope) {
-    fprintf(stderr, "sea_scope_free called on %p\n", scope);
     // remove inputs first so user lists are clean
     for EachIndex(i, scope->inputlen) {
         sea_node_set_input(fn, scope, 0, i);
@@ -332,10 +331,7 @@ SeaNode *sea_merge_scopes(
     }
 
 
-    fprintf(stderr, "freeing scope %p, inputlen=%u\n", that_scope, that_scope->inputlen);
-    for EachIndex(i, that_scope->inputlen) {
-        fprintf(stderr, "  input[%u] = %p\n", i, that_scope->inputs[i]);
-    }
+
     sea_scope_free(fn, m, that_scope);
 
     sea_node_unkeep(fn, region);

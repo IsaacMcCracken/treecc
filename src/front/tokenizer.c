@@ -148,6 +148,7 @@ Token *tokenize(Arena *arena, U32 *token_count, String8 src) {
                 case '\n':
                     append_token(arena, TokenKind_NewLine, prev, curr, &count);
                     break;
+
                 case '(':
                     append_token(arena, TokenKind_LParen, prev, curr, &count);
                     break;
@@ -186,6 +187,9 @@ Token *tokenize(Arena *arena, U32 *token_count, String8 src) {
                     break;
                 case ',':
                     append_token(arena, TokenKind_Comma, prev, curr, &count);
+                    break;
+                case '.':
+                    append_token(arena, TokenKind_Dot, prev, curr, &count);
                     break;
                 case '=': {
                     // TODO bound check

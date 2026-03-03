@@ -340,10 +340,8 @@ SeaNode *sea_peephole_opt(SeaFunctionGraph *fn, SeaNode *node) {
             // single->type = sea_type_join(fn, node->type, single->type);
             return sea_dead_code_elim(fn, node, single);
         } else {
-            U32 gvn = sea_node_hash(SeaNode *new = sea_idealize(fn, node);
+            U32 gvn = sea_node_hash(node);
 
-
-                SeaNode *result = sea_dead_code_elim(fn, node, new);node);
             node->gvn = gvn;
             sea_map_insert(&fn->map, node);
         }

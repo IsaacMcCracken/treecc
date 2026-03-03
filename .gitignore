@@ -16,3 +16,6 @@ des.c
 des
 metagen
 .cache/
+a.out
+graphs/
+scratch/

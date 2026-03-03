@@ -99,11 +99,10 @@ void parser_error(Parser *p, const char *fmt, ...) {
 
     vfprintf(stderr, fmt, args);
 
-
     va_end(args);
 
     String8 line_str = parser_get_curr_line_str8(p);
-    fprintf(stderr, "\n\t%lu |\t%.*s\n", p->line, str8_varg(line_str));
+    fprintf(stderr, "\n\t%lu |\t%.*s\n", p->line + 1, str8_varg(line_str));
 }
 
 SeaType *parse_type(Parser *p) {
@@ -115,14 +114,20 @@ SeaType *parse_type(Parser *p) {
     switch (tok.kind) {
         case TokenKind_Int: {
             advance_token(p);
-            return &sea_type_S64;
+            t = &sea_type_S64;
         } break;
 
-        default: {
-            // TODO better errors
-            fprintf(stderr, "Could not parse type '%.*s'", str8_varg(token_string(p, tok)));
-            advance_token(p);
+        case TokenKind_Identifier: {
+            // SeaType *lookup
+            String8 name = token_string(p, tok);
+            SeaSymbolEntry *sym = sea_lookup_symbol(p->mod, name);
+            if (sym) {
+                advance_token(p);
+                t = sym->type;
+            }
         } break;
+
+
     }
 
     return t;
@@ -339,42 +344,57 @@ void parse_while(Parser *p, SeaFunctionGraph *fn) {
     sea_scope_free(fn, &p->m, head_scope);
 }
 
-void parse_local_decl(Parser *p, SeaFunctionGraph *fn) {
-    skip_newlines(p);
-    SeaType *t = parse_type(p);
-    Token tok = current_token(p);
-    String8 name = token_string(p, tok);
 
-    advance_token(p);
-    tok = current_token(p);
-
-    if (tok.kind == TokenKind_Equals) {
-        advance_token(p);
-        SeaNode *expr = parse_expr(p, fn);
-        // TODO Replace with a real function
-        // if (t->kind !=  expr->type->kind) {
-        //     // Error
-        //     fprintf(stderr, "Error: Type Mismatch");
-        // }
-
-        sea_scope_insert_symbol(fn, &p->m, name, expr);
-    } else {
-        // TODO top
-
-    }
-
-}
 
 SeaNode *parse_return(Parser *p, SeaFunctionGraph *fn) {
     advance_token(p);
     SeaNode *expr = parse_expr(p, fn);
-    SeaNode *result = sea_peephole(fn, expr);
+    expr = sea_peephole(fn, expr);
     SeaNode *ctrl = sea_node_get_ctrl(fn, p->m.curr);
     SeaNode *ret = sea_create_return(fn, ctrl, expr);
     // add return to the stop node
     sea_add_return(fn, ret);
     sea_node_set_ctrl(fn, p->m.curr, sea_create_dead_ctrl(fn));
     return ret;
+}
+
+SeaNode *parse_expr_stmt(Parser *p, SeaFunctionGraph *fn) {
+    SeaNode *node = 0;
+    // SeaType *type = parse_type(p, fn);
+    SeaType *t = parse_type(p);
+    Token tok = current_token(p);
+    String8 var_name = token_string(p, tok);
+
+    if (!t) {
+        SeaNode *lookup = sea_scope_lookup_symbol(&p->m, var_name);
+        if (!lookup) {
+            parser_error(p, "\"%.*s\" is not defined", str8_varg(var_name));
+        }
+    } else {
+        tok = current_token(p);
+        String8 var_name = token_string(p, tok);
+
+    }
+
+
+    advance_token(p);
+    skip_newlines(p);
+    tok = current_token(p);
+
+
+    // for now always expect =
+    if (tok.kind == TokenKind_Equals) {
+        advance_token(p);
+        SeaNode *expr = parse_expr(p, fn);
+        node = sea_peephole(fn, expr);
+        if (t) sea_scope_insert_symbol(fn, &p->m, var_name, node);
+        else sea_scope_update_symbol(fn, &p->m, var_name, node);
+    } else {
+        String8 str = token_string(p, tok);
+        parser_error(p, "expected '=' got %.*s (will default to 0 in future)", str8_varg(str));
+    }
+
+    return node;
 }
 
 void parse_stmt(Parser *p, SeaFunctionGraph *fn) {
@@ -386,24 +406,6 @@ void parse_stmt(Parser *p, SeaFunctionGraph *fn) {
         case TokenKind_Return: {
             parse_return(p, fn);
         } break;
-        case TokenKind_Identifier: {
-            // TODO see if its a user defined type
-            String8 name = token_string(p, tok);
-            SeaNode *n = sea_scope_lookup_symbol(&p->m, name);
-            if (!n) {
-                String8 name = token_string(p, tok);
-                parser_error(p, "symbol '%.*s' is not defined in scope.", str8_varg(name));
-            }
-
-            advance_token(p);
-            tok = current_token(p);
-            if (tok.kind == TokenKind_Equals) {
-                advance_token(p);
-                SeaNode *expr = parse_expr(p, fn);
-                if (n) sea_scope_update_symbol(fn, &p->m, name, expr);
-            }
-
-        } break;
         case TokenKind_If: {
             parse_if(p, fn);
         } break;
@@ -412,14 +414,8 @@ void parse_stmt(Parser *p, SeaFunctionGraph *fn) {
             parse_while(p, fn);
         } break;
 
-        case TokenKind_Int: {
-            parse_local_decl(p, fn);
-        } break;
         default: {
-            // TODO error
-            String8 name = token_string(p, tok);
-            fprintf(stderr, "Error: unkown token '%.*s' while parsing statement.\n", str8_varg(name));
-            advance_token(p);
+            parse_expr_stmt(p, fn);
         } break;
     }
 }
@@ -448,9 +444,10 @@ void parse_block(Parser *p, SeaFunctionGraph *fn) {
 SeaType *parse_struct(Parser *p) {
     advance_token(p);
     skip_newlines(p);
-
     Token name_tok = current_token(p);
     String8 struct_name = token_string(p, name_tok);
+
+
 
     if (name_tok.kind != TokenKind_Identifier) {
         parser_error(p, "Expected a name for struct got %.*s", str8_varg(struct_name));
@@ -461,11 +458,14 @@ SeaType *parse_struct(Parser *p) {
     Token tok = current_token(p);
 
     if (tok.kind != TokenKind_LBrace) {
-        String8 str = token_string(p tok);
+        String8 str = token_string(p, tok);
         parser_error(p, "Expected a '{' got %.*s.", str8_varg(str));
     }
 
 
+    advance_token(p);
+    skip_newlines(p);
+    tok = current_token(p);
 
     arena_align_forward(p->arena, AlignOf(SeaField));
     SeaField *fields = arena_pos_ptr(p->arena);
@@ -475,7 +475,7 @@ SeaType *parse_struct(Parser *p) {
         SeaType *type = parse_type(p);
         skip_newlines(p);
         tok = current_token(p);
-        name = token_string(p, tok);
+        String8 name = token_string(p, tok);
         if (tok.kind != TokenKind_Identifier) {
             parser_error(p, "Expected a field name got %.*s.", str8_varg(name));
         }
@@ -488,19 +488,19 @@ SeaType *parse_struct(Parser *p) {
 
         advance_token(p);
         tok = current_token(p);
-        if (tok.kind != TokenKind_RBrace || tok.kind != TokenKind_Comma) {
+        if (tok.kind != TokenKind_RBrace && tok.kind != TokenKind_Comma) {
             String8 str = token_string(p, tok);
-            parser_error(p, "Expected a ',' got %.*s.", str8_varg(str));
+            parser_error(p, "Expected a ',' or '}' got '%.*s'.", str8_varg(str));
         }
 
         advance_token(p);
         skip_newlines(p);
-        advance_token(p);
         tok = current_token(p);
     }
     advance_token(p);
-
-
+    SeaFieldArray arr = {fields, field_count};
+    SeaTypeStruct s = {struct_name, arr};
+    sea_add_struct_symbol(p->mod, s);
 }
 
 
@@ -603,9 +603,12 @@ void parse_decl(Parser *p) {
     Token tok = current_token(p);
     switch (tok.kind) {
         case TokenKind_Fn: {
-        default: {
             parse_func(p);
         } break;
+        case TokenKind_Struct: {
+            parse_struct(p);
+        } break;
+        default: {
             String8 str = token_string(p, tok);
             printf("Error: Did not expect '%.*s' (%d) in %.*s.\n", str8_varg(str), tok.kind, str8_varg(p->filename));
         } break;

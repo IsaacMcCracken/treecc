@@ -31,33 +31,6 @@ struct SeaFunctionProto {
     SeaFieldArray args;
 };
 
-typedef U8 SeaSymbolKind;
-enum {
-    SeaSymbolKind_Invalid,
-    SeaSymbolKind_Function,
-    SeaSymbolKind_Global,
-};
-
-typedef struct SeaSymbolEntry SeaSymbolEntry;
-struct SeaSymbolEntry {
-    SeaSymbolEntry *next;
-    SeaSymbolEntry *next_hash;
-    String8 name;
-    SeaSymbolKind kind;
-    union {
-        SeaFunctionProto fn_proto;
-    };
-};
-
-typedef struct SeaSymbols SeaSymbols;
-struct SeaSymbols {
-    Arena *arena;
-    SeaSymbolEntry **cells;
-    U64 cap;
-    U64 count;
-    SeaSymbolEntry *first;
-    SeaSymbolEntry *last;
-};
 
 typedef U8 SeaDataKind;
 enum {
@@ -75,9 +48,11 @@ enum {
     SeaLatticeKind_CtrlLive,
     SeaLatticeKind_CtrlDead,
     SeaLatticeKind_SIMPLE,
+    SeaLatticeKind_IntTop,
     SeaLatticeKind_Int,
     SeaLatticeKind_Tuple,
     SeaLatticeKind_Struct,
+    SeaLatticeKind_Func,
 };
 
 
@@ -86,6 +61,8 @@ struct SeaTypeInt {
     S64 min;
     S64 max;
 };
+
+
 
 typedef struct SeaTypeStruct SeaTypeStruct;
 struct SeaTypeStruct {
@@ -105,6 +82,7 @@ struct SeaType {
     SeaLatticeKind kind;
     union {
         SeaTypeStruct s;
+        SeaFunctionProto func;
         SeaTypeInt i;
         F64 f64;
         F32 f32;
@@ -112,7 +90,29 @@ struct SeaType {
     };
 };
 
+
+
+typedef struct SeaSymbolEntry SeaSymbolEntry;
+struct SeaSymbolEntry {
+    SeaSymbolEntry *next;
+    SeaSymbolEntry *next_hash;
+    String8 name;
+    SeaType *type;
+};
+
+typedef struct SeaSymbols SeaSymbols;
+struct SeaSymbols {
+    Arena *arena;
+    SeaSymbolEntry **cells;
+    U64 cap;
+    U64 count;
+    SeaSymbolEntry *first;
+    SeaSymbolEntry *last;
+};
+
 struct SeaTypeLattice {
+    RWMutex lock;
+    Arena *arena;
     SeaType **cells;
     U64 cap;
 };
@@ -175,7 +175,14 @@ typedef enum {
     SeaNodeKind_ConstInt,
     SeaNodeKind_Proj,
     SeaNodeKind_Phi,
-    SeaNodeKind_COUNT,
+
+    //*****************//
+    // Mem Nodes
+    //*****************//
+    SeaNodeKind_AllocA,
+    SeaNodeKind_Load,
+
+    SeaNodeKind_COUNT
 } SeaEnum;
 
 
@@ -192,13 +199,15 @@ struct SeaNode {
     SeaNodeKind kind;
     U16 inputcap;
     U16 inputlen;
-    U32 gvn;
     U16 idepth;
+    U32 gvn;
+    U32 nid;
     SeaNode **inputs;
     SeaUser *users;
     union {
         S64 vint;
         void *vptr;
+        SeaType *vtype;
     };
     SeaType *type;
 };
@@ -271,10 +280,10 @@ struct SeaFunctionGraph {
     SeaFunctionProto proto;
     U64 deadspace;
     SeaNodeMap map;
-    SeaTypeLattice *lat;
     SeaNode *start;
     SeaNode *stop;
-
+    U64 node_count;
+    U64 nidcap;
     // Optimization Data
     SeaWorkList *wl;
 
@@ -298,6 +307,7 @@ struct SeaModule {
     RWMutex lock;
     SeaSymbols symbols;
     SeaFunctionGraphList functions;
+    SeaTypeLattice *lat;
 };
 
 
@@ -310,8 +320,11 @@ extern SeaType sea_type_Bool;
 
 // Module
 SeaModule sea_create_module(void);
+SeaSymbolEntry *sea_lookup_symbol(SeaModule *m, String8 name);
 SeaFunctionGraph *sea_add_function(SeaModule *mod, SeaScopeManager *m, SeaFunctionProto proto);
 void sea_add_function_symbol(SeaModule *m, SeaFunctionProto proto);
+void sea_add_struct_symbol(SeaModule *m, SeaTypeStruct s);
+void sea_codegen_module(SeaModule *m);
 
 
 void sea_node_print_expr_debug(SeaNode *expr);
@@ -338,7 +351,7 @@ void sea_map_insert(SeaNodeMap *map, SeaNode *node);
 // Optimizations
 SeaNode *sea_peephole(SeaFunctionGraph *fn, SeaNode *node);
 
-// Builder Functions
+// Node Builder Functions
 SeaNode *sea_create_stop(SeaFunctionGraph *fn, U16 input_reserve);
 SeaNode *sea_create_start(SeaFunctionGraph *fn, SeaScopeManager *m, SeaFunctionProto proto);
 SeaNode *sea_create_const_int(SeaFunctionGraph *fn, S64 v);

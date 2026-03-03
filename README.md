@@ -1,11 +1,23 @@
-# Tree C Compiler
+# C4 Compiler
 
-![logo](logos/trecclogo.png)
+![logo](logos/c4logo.png)
 
 ## Description
-A sea of nodes compiler for a c-like language.
+A sea of nodes compiler for C4 a c-like language.
 
-## To-Do List
-- [ ] Add local symbols to function parsing
+```c
+fn int sample() {
+    int x = 42
 
-## Done List
+    int y = x + 3
+    if (y > 42) {
+        x = x + 58
+    }
+
+    if (x > 100) {
+        x = x + 320
+    }
+
+    return x
+}
+```

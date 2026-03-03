@@ -33,13 +33,15 @@ U16 sea_user_slot(SeaUser *user);
 
 // Type Stuff
 // TODO(ISAAC) move lattice to module??
-void sea_lattice_init(SeaFunctionGraph *fn);
+void sea_lattice_init(SeaModule *m);
 void sea_lattice_insert(SeaFunctionGraph *fn, SeaType *t);
-void sea_lattice_raw_insert(SeaFunctionGraph *fn, SeaType *t);
+// void sea_lattice_raw_insert(SeaFunctionGraph *fn, SeaType *t);
 
 // type creators
 SeaType *sea_type_const_int(SeaFunctionGraph *fn, S64 v);
 SeaType *sea_type_tuple(SeaFunctionGraph *fn, SeaType **elems, U64 count);
+SeaType *sea_type_make_func(SeaModule *m, SeaFunctionProto func);
+SeaType *sea_type_make_struct(SeaModule *m, SeaTypeStruct s);
 
 // type computers
 SeaType *sea_compute_type(SeaFunctionGraph *fn, SeaNode *n);
@@ -52,6 +54,12 @@ SeaType *sea_type_meet(SeaFunctionGraph *fn, SeaType *a, SeaType *b);
 B32 sea_type_is_const_int(SeaType *t);
 S64 sea_type_const_int_val(SeaType *t);
 B32 sea_type_is_const_int(SeaType *t);
+
+U16 sea_node_idepth(SeaNode *n);
+SeaNode *sea_node_idom(SeaNode *node);
+
+// Codegen Phases
+void sea_global_code_motion(SeaFunctionGraph *fn);
 
 
 

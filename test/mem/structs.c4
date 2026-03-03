@@ -1,0 +1,12 @@
+struct Vec2 {
+    int x,
+    int y,
+}
+
+
+fn int idk() {
+    Vec2 v
+    v.x = 5
+    v.y = 2
+    return v.x
+}

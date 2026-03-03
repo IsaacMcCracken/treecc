@@ -1,15 +1,5 @@
 
 
-
-fn int test_basic_while() {
-    int i = 0
-    while (i < 10) {
-        i = i + 1
-    }
-
-    return i
-}
-
 fn int test_lots_of_branches() {
     int x = 3
 
@@ -22,4 +12,13 @@ fn int test_lots_of_branches() {
     }
 
     return x + t
+}
+
+fn int test_basic_while() {
+    int i = 0
+    while (i < 10) {
+        i = i + 1
+    }
+
+    return i
 }

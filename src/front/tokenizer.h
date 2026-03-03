@@ -13,6 +13,7 @@ enum {
   TokenKind_Equals,
   TokenKind_SemiColon,
   TokenKind_Comma,
+  TokenKind_Dot,
 
   TokenKind_LParen,
   TokenKind_RParen,

@@ -183,6 +183,9 @@ void sea_node_alloc_inputs(SeaFunctionGraph *fn, SeaNode *node, U16 cap) {
 
 SeaNode *sea_node_alloc(SeaFunctionGraph *fn, SeaNodeKind kind, U16 inputcap, U16 inputlen) {
     SeaNode *node = sea_alloc_item(fn, SeaNode);
+    node->nid = fn->nidcap;
+    fn->nidcap += 1;
+    fn->node_count += 1;
     node->kind = kind;
     node->inputlen = inputlen;
     if (inputcap)
@@ -279,36 +282,7 @@ void sea_node_set_input(SeaFunctionGraph *fn, SeaNode *node, SeaNode *input, U16
 
 
 
-SeaNode *sea_node_idom(SeaFunctionGraph *fn, SeaNode *node) {
-    switch (node->kind) {
-        case SeaNodeKind_Region: {
-            Assert(node->inputlen == 2);
-            SeaNode *lhs = sea_node_idom(fn, node->inputs[1]);
-            SeaNode *rhs = sea_node_idom(fn, node->inputs[2]);
-            while (lhs != rhs) {
-                if (lhs == 0 || rhs == 0) return 0;
-                S32 lidepth = lhs->idepth;
-                S32 ridepth = rhs->idepth;
-                S32 cmp = lidepth - ridepth;
-                if (cmp >= 0) lhs = sea_node_idom(fn, lhs);
-                if (cmp <= 0) rhs = sea_node_idom(fn, rhs);
-            }
-            if (lhs == 0) return 0;
-            node->idepth = lhs->idepth + 1;
-            return lhs;
-        } break;
-        default: {
-            SeaNode *idom = node->inputs[0];
-            if (idom) {
-                if (idom->idepth == 0) sea_node_idom(fn, idom);
-                node->idepth = idom->idepth + 1;
-            } else {
-                node->idepth = 1;
-            }
-            return idom;
-        } break;
-    }
-}
+
 
 
 
@@ -336,8 +310,7 @@ void sea_node_kill(SeaFunctionGraph *fn, SeaNode *node) {
     Assert(node->users == 0);
     Assert(node->kind != SeaNodeKind_Start);
 
-    // Assert(node->vint != 32);
-
+    fn->node_count -= 1;
 
     for EachIndex(i, node->inputlen) {
         sea_node_set_input(fn, node, 0, i);
@@ -384,7 +357,8 @@ B32 sea_node_is_cfg(SeaNode *node) {
             return 1;
         case SeaNodeKind_Proj: {
             SeaNode *ctrl = node->inputs[0];
-            return node->vint == 0 || ctrl->kind == SeaNodeKind_If;
+            return (node->vint == 0 && ctrl->kind == SeaNodeKind_Start)||
+                    ctrl->kind == SeaNodeKind_If;
         }
     }
 
@@ -415,7 +389,6 @@ B32 sea_node_is_bin_op(SeaNode *node) {
 }
 
 B32 sea_node_is_urnary_op(SeaNode *node) {
-    if (!sea_node_is_op(node)) return 0;
     switch (node->kind) {
         case SeaNodeKind_Not:
         case SeaNodeKind_NegateI:
@@ -571,4 +544,21 @@ SeaNode *sea_create_region(SeaFunctionGraph *fn, SeaNode **inputs, U16 ctrl_coun
     }
 
     return node;
+}
+
+
+SeaNode *sea_create_alloca(SeaFunctionGraph *fn, SeaNode *ctrl, SeaType *t) {
+    SeaNode *node = sea_node_alloc(fn, SeaNodeKind_AllocA, 1, 1);
+    sea_node_set_input(fn, node, ctrl, 0);
+    node->vtype = t;
+    node->vint = 0; // TODO calculate size of type t;
+
+    return node;
+}
+
+SeaNode *sea_create_load(SeaFunctionGraph *fn, SeaNode *memin, S64 offset) {
+    SeaNode *node = sea_node_alloc(fn, SeaNodeKind_Load, 2, 2);
+    node->vint = offset;
+    sea_node_set_input(fn, node, memin, 1);
+    return sea_peephole(fn, node);
 }

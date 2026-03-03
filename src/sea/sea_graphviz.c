@@ -115,7 +115,7 @@ void sea_graphviz(const char *filepath, SeaFunctionGraph *fn) {
     int error = fclose(fp);
 
 
-    String8 cmd = str8f(scratch.arena, "dot -Tpng %s -o output.png && xdg-open output.png\0", filepath);
+    String8 cmd = str8f(scratch.arena, "dot -Tpng %s -o %s.png && xdg-open output.png\0", filepath, filepath);
     system(cmd.str);
     scratch_end(scratch);
 }

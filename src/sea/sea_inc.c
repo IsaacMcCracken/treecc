@@ -6,7 +6,10 @@
 #include "sea_peeps.c"
 #include "sea_scope.c"
 #include "sea_type.c"
+#include "sea_compute.c"
 #include "sea_graphviz.c"
 #include "sea_alloc.c"
+#include "sea_codemotion.c"
+#include "sea_codegen.c"
 
 #endif // SEA_INC_C

@@ -22,4 +22,5 @@
 #include "base_markup.c"
 #include "base_meta.c"
 #include "base_log.c"
+#include "base_bitarray.c"
 #include "base_entry_point.c"

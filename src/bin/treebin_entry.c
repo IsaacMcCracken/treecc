@@ -40,6 +40,8 @@ internal void entry_point(CmdLine *cmd_line) {
         sea_graphviz(buf, &fn_node->fn);
     }
 
+    sea_codegen_module(&m.m);
+
 
     frontend_deinit();
 }
