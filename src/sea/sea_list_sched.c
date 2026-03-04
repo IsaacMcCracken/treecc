@@ -9,7 +9,6 @@ void local_schedule(U16 *bcnts, SeaNode *bb) {
     for EachNode(user_node, SeaUser, bb->users) {
         SeaNode *user = sea_user_val(user_node);
         if (user->inputs[0] == bb && user->kind != SeaNodeKind_Phi) {
-            in_blk_num += 1;
             // original is
             // for( Node def : use._inputs )
             // Has defs from same block?  Then block-local inputs
@@ -25,12 +24,12 @@ void local_schedule(U16 *bcnts, SeaNode *bb) {
 
     Temp scratch = scratch_begin(0, 0);
 
-    SeaNodelist ready_queue = { 0 };
+    SeaNodeList ready_queue = { 0 };
 
     for EachNode(user_node, SeaUser, bb->users) {
         SeaNode *user = sea_user_val(user_node);
         if (bcnts[user->nid] == 0) {
-            SeaNodeNode *nn = push_item(scratch.arena);
+            SeaNodeNode *nn = push_item(scratch.arena, SeaNodeNode);
             nn->node = user;
             sea_node_list_push_tail(&ready_queue, nn);
         }
@@ -46,11 +45,12 @@ void local_schedule(U16 *bcnts, SeaNode *bb) {
 
 void local_sched_walk(BitArray *visit, U16 *bcnts, SeaNode *cfg) {
     if (bits_get(visit, cfg->nid)) return;
-    bits_set(visit, cfg->nid, 1);
+    bits_set(visit, cfg->nid);
+
     local_schedule(bcnts, cfg);
     for EachNode(user_node, SeaUser, cfg->users) {
         SeaNode *user = sea_user_val(user_node);
-        if (sea_node_is_cfg(user)) local_sched_walk(visit, user);
+        if (sea_node_is_cfg(user)) local_sched_walk(visit, bcnts, user);
     }
 }
 
