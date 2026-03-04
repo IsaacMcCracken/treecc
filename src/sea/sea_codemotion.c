@@ -1,14 +1,5 @@
 #include "sea_internal.h"
 
-
-void sea_block_push_head(SeaSchedule *s, SeaBlock *b) {
-    DLLPushFront(s->head, s->tail, b);
-}
-
-void sea_block_push_tail(SeaSchedule *s, SeaBlock *b) {
-    DLLPushBack(s->head, s->tail, b);
-}
-
 SeaNode *sea_node_lca(SeaNode *lhs, SeaNode *rhs);
 
 SeaNode *sea_node_idom(SeaNode *node) {
@@ -164,16 +155,6 @@ void sea_node_list_push_head(SeaNodeList *l, SeaNodeNode *n) {
     l->count += 1;
 }
 
-void get_basic_blocks(SeaSchedule *s, BitArray *visit, SeaNode *n) {
-    if (!sea_node_is_cfg(n) || bits_get(visit, n->nid)) return;
-    bits_set(visit, n->nid);
-
-    for EachNode(user_node, SeaUser, n->users) {
-        SeaNode *user = sea_user_val(user_node);
-        get_basic_blocks(s, visit, user);
-    }
-}
-
 void rpo_cfg(Arena *arena, BitArray *visit, SeaNodeList *l, SeaNode *n) {
     if (!sea_node_is_cfg(n) || bits_get(visit, n->nid)) return;
     bits_set(visit, n->nid);
@@ -314,9 +295,7 @@ void schedule_late(
 
 void dumb_print_bb(SeaNodeMap *m, SeaNode *bb);
 
-SeaSchedule *sea_global_code_motion(SeaFunctionGraph *fn) {
-    SeaSchedule *sched = sea_alloc_item(fn, SeaSchedule);
-    sched->fn = fn;
+void sea_global_code_motion(SeaFunctionGraph *fn) {
 
     // Early Scheduling
     {

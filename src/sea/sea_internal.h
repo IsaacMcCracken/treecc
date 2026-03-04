@@ -28,23 +28,7 @@ typedef struct {
 } SeaNodeList;
 
 
-typedef struct SeaBlock SeaBlock;
-struct SeaBlock {
-    SeaBlock *next, *prev;
-    SeaNode *begin, *end;
-    SeaNode **local;
-    U64 count;
-};
 
-typedef struct SeaSchedule SeaSchedule;
-struct SeaSchedule {
-    SeaFunctionGraph *fn;
-    SeaBlock *head;
-    SeaBlock *tail;
-    SeaNode **schedule;
-    U64 len;
-    U64 cap;
-};
 
 
 extern SeaType sea_type_IfBoth;
@@ -95,7 +79,7 @@ void sea_node_list_push_head(SeaNodeList *l, SeaNodeNode *n);
 
 
 // Codegen Phases
-SeaSchedule *sea_global_code_motion(SeaFunctionGraph *fn);
+void sea_global_code_motion(SeaFunctionGraph *fn);
 
 // scheduling info
 B32 node_is_blockhead(SeaNode *cfg);
