@@ -10,9 +10,11 @@ struct BitArray {
 
 
 BitArray bits_alloc(Arena *arena, U64 n);
-B32 bits_set(BitArray *bits, U64 idx, B32 v);
-B32 bits_get(BitArray *bits, U64 idx, B32 v);
+B32 bits_set(BitArray *bits, U64 idx);
+B32 bits_unset(BitArray *bits, U64 idx);
+B32 bits_get(BitArray *bits, U64 idx);
 void bits_clear(BitArray *bits);
+B32 bits_is_empty(BitArray *bits);
 
 
 

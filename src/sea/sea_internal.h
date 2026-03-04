@@ -10,10 +10,38 @@ struct FreeNode {
 
 struct SeaAllocator {
     Arena *arena;
-    FreeNode *small_buckets[8]; // 0 - 64 bytes in increments of 8
+    FreeNode *small_buckets[8]; // 8 - 64 bytes in increments of 8
     FreeNode *huge_buckets[6]; // 128 to 4096 bytes in increments of powers of 2
 };
 
+// I did this cuz its goofy aahhh
+typedef struct SeaNodeNode SeaNodeNode;
+struct SeaNodeNode {
+    SeaNodeNode *next;
+    SeaNode *node;
+};
+
+typedef struct {
+    SeaNodeNode *head;
+    SeaNodeNode *tail;
+    U64 count;
+} SeaNodeList;
+
+
+typedef struct SeaBlock SeaBlock;
+struct SeaBlock {
+
+    SeaNode *begin, *end;
+    SeaNode **local;
+    U64 count;
+};
+
+typedef struct SeaSchedule SeaSchedule;
+struct SeaSchedule {
+    SeaFunctionGraph *fn;
+
+
+};
 
 
 extern SeaType sea_type_IfBoth;
@@ -58,8 +86,17 @@ B32 sea_type_is_const_int(SeaType *t);
 U16 sea_node_idepth(SeaNode *n);
 SeaNode *sea_node_idom(SeaNode *node);
 
+void sea_node_list_push_tail(SeaNodeList *l, SeaNodeNode *n);
+void sea_node_list_push_head(SeaNodeList *l, SeaNodeNode *n);
+
+
+
 // Codegen Phases
 void sea_global_code_motion(SeaFunctionGraph *fn);
+
+
+// scheduling info
+B32 node_is_blockhead(SeaNode *cfg);
 
 
 

@@ -10,6 +10,8 @@
 #include "sea_graphviz.c"
 #include "sea_alloc.c"
 #include "sea_codemotion.c"
+#include "sea_list_sched.c"
 #include "sea_codegen.c"
+
 
 #endif // SEA_INC_C

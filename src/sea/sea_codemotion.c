@@ -1,17 +1,13 @@
 #include "sea_internal.h"
 
-// I did this cuz its goofy aahhh
-typedef struct SeaNodeNode SeaNodeNode;
-struct SeaNodeNode {
-    SeaNodeNode *next;
-    SeaNode *node;
-};
 
-typedef struct {
-    SeaNodeNode *head;
-    SeaNodeNode *tail;
-    U64 count;
-} SeaNodeList;
+void sea_block_push_head(SeaSchedule *s, SeaBlock *b) {
+    DLLPushFront(s->head, s->tail, b);
+}
+
+void sea_block_push_tail(SeaSchedule *s, SeaBlock *b) {
+    DLLPushBack(s->head, s->tail, b);
+}
 
 SeaNode *sea_node_lca(SeaNode *lhs, SeaNode *rhs);
 
@@ -163,25 +159,23 @@ void sea_node_list_push_tail(SeaNodeList *l, SeaNodeNode *n) {
     l->count += 1;
 }
 
-void sea_node_list_push_front(SeaNodeList *l, SeaNodeNode *n) {
+void sea_node_list_push_head(SeaNodeList *l, SeaNodeNode *n) {
     SLLQueuePushFront(l->head, l->tail, n);
     l->count += 1;
 }
 
-void rpo_cfg(Arena *arena, SeaNodeMap *m, SeaNodeList *l, SeaNode *n) {
-    if (!sea_node_is_cfg(n)) return;
+void rpo_cfg(Arena *arena, BitArray *visit, SeaNodeList *l, SeaNode *n) {
+    if (!sea_node_is_cfg(n) || bits_get(visit, n->nid)) return;
+    bits_set(visit, n->nid);
 
-    SeaNode *lookup = sea_map_lookup(m, n);
-    if (lookup) return;
-    sea_map_insert(m, n);
     for EachNode(user_node, SeaUser, n->users) {
         SeaNode *user = sea_user_val(user_node);
-        rpo_cfg(arena, m, l, user);
+        rpo_cfg(arena, visit, l, user);
     }
 
     SeaNodeNode *nn = push_item(arena, SeaNodeNode);
     nn->node = n;
-    sea_node_list_push_front(l, nn);
+    sea_node_list_push_head(l, nn);
 }
 
 SeaNode *cfg_zero(SeaNode *n) {
@@ -206,15 +200,14 @@ B32 node_is_blockhead(SeaNode *cfg) {
 }
 
 
-void schedule_early(SeaFunctionGraph *fn, SeaNodeMap *m, SeaNode *n) {
-    if (!n) return;
-    SeaNode *lookup = sea_map_lookup(m, n);
-    if (lookup) return;
+void schedule_early(SeaFunctionGraph *fn, BitArray *visit, SeaNode *n) {
+    if (!n || bits_get(visit, n->nid)) return;
+    bits_set(visit, n->nid);
 
     for EachIndex(i, n->inputlen) {
         SeaNode *in = n->inputs[i];
         if (in && !node_is_pinned(in))
-        schedule_early(fn, m, in);
+        schedule_early(fn, visit, in);
     }
 
     if (!node_is_pinned(n)) {
@@ -222,10 +215,12 @@ void schedule_early(SeaFunctionGraph *fn, SeaNodeMap *m, SeaNode *n) {
 
         for EachIndexFrom(i, 1, n->inputlen) {
             SeaNode *in = n->inputs[i];
-            SeaNode *cfg0 = cfg_zero(in);
-            U16 d0 = sea_node_idepth(early);
-            U16 d1 = sea_node_idepth(cfg0);
-            if (d1 > d0) early = cfg0;
+            if (in) {
+                SeaNode *cfg0 = cfg_zero(in);
+                U16 d0 = sea_node_idepth(early);
+                U16 d1 = sea_node_idepth(cfg0);
+                if (d1 > d0) early = cfg0;
+            }
 
         }
 
@@ -309,19 +304,20 @@ void schedule_late(
 
 void dumb_print_bb(SeaNodeMap *m, SeaNode *bb);
 void sea_global_code_motion(SeaFunctionGraph *fn) {
+    // SeaSchedule *sched = sea_alloc_item(fn, SeaSchedule);
     // Early Scheduling
     {
         Temp scratch = scratch_begin(0, 0);
-        SeaNodeMap map = sea_map_init(scratch.arena, 101);
+        BitArray visit = bits_alloc(scratch.arena, fn->nidcap);
 
         SeaNodeList l = { 0 };
-        rpo_cfg(scratch.arena, &map, &l, fn->start);
+        rpo_cfg(scratch.arena, &visit, &l, fn->start);
         for EachNode(nn, SeaNodeNode, l.head) {
             SeaNode *cfg = nn->node;
             sea_node_loop_depth(cfg);
             for EachIndex(i, cfg->inputlen) {
                 SeaNode *in = cfg->inputs[i];
-                schedule_early(fn, &map, in);
+                schedule_early(fn, &visit, in);
             }
         }
         scratch_end(scratch);

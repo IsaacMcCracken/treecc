@@ -1,7 +1,7 @@
 #include "sea_internal.h"
 
 
-#define SHOW
+#define SEA_SHOW_GRAPH 1
 
 String8 sea_node_label(Arena *temp, SeaNode *node) {
     switch (node->kind) {
@@ -74,7 +74,6 @@ void sea_graphviz_visit_node(FILE *fp, Arena *temp, SeaNodeMap *map, SeaNode *no
         SeaNode *input = node->inputs[i];
         if (input) {
             sea_graphviz_visit_node(fp, temp, map, input);
-            // fprintf(fp, "n%p -> n%p [dir=back];\n", input, node);
             fprintf(fp, "n%p -> n%p;\n", input, node);
         }
     }
@@ -84,7 +83,7 @@ void sea_graphviz_visit_node(FILE *fp, Arena *temp, SeaNodeMap *map, SeaNode *no
         SeaNode *user = sea_user_val(user_node);
         sea_graphviz_visit_node(fp, temp, map, user);
         // fprintf(fp, "n%p -> n%p [color=\"blue\", dir=back];\n", user, node);
-        fprintf(fp, "n%p -> n%p [color=\"blue\"];\n", user, node);
+        // fprintf(fp, "n%p -> n%p [color=\"blue\"];\n", user, node);
 
 
     }
@@ -114,8 +113,9 @@ void sea_graphviz(const char *filepath, SeaFunctionGraph *fn) {
 
     int error = fclose(fp);
 
-
-    String8 cmd = str8f(scratch.arena, "dot -Tpng %s -o %s.png && xdg-open output.png\0", filepath, filepath);
+    #if SEA_SHOW_GRAPH
+    String8 cmd = str8f(scratch.arena, "dot -Tpng %s -o %s.png && xdg-open %s.png\0", filepath, filepath, filepath);
     system(cmd.str);
+    #endif
     scratch_end(scratch);
 }
