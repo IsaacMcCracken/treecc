@@ -320,6 +320,7 @@ void sea_node_kill(SeaFunctionGraph *fn, SeaNode *node) {
     node->kind = SeaNodeKind_Invalid;
 }
 
+// todo bug we does region have user
 void sea_node_subsume(SeaFunctionGraph *fn, SeaNode *old, SeaNode *new) {
     Assert(old != new);
     sea_node_keep(fn, new);
@@ -381,7 +382,7 @@ B32 sea_node_is_bin_op(SeaNode *node) {
     if (!sea_node_is_op(node)) return 0;
     switch (node->kind) {
         case SeaNodeKind_Not:
-        case SeaNodeKind_NegateI:
+        case SeaNodeKind_NegI:
         case SeaNodeKind_BitNotI:
             return 0;
     }
@@ -391,7 +392,7 @@ B32 sea_node_is_bin_op(SeaNode *node) {
 B32 sea_node_is_urnary_op(SeaNode *node) {
     switch (node->kind) {
         case SeaNodeKind_Not:
-        case SeaNodeKind_NegateI:
+        case SeaNodeKind_NegI:
         case SeaNodeKind_BitNotI:
             return 1;
     }

@@ -5,7 +5,7 @@
 
 SeaNode *sea_idealize_int(SeaFunctionGraph *fn, SeaNode *node) {
     // constfold urnary expression
-    if (node->kind == SeaNodeKind_NegateI && (node->inputs[1]->kind == SeaNodeKind_ConstInt)) {
+    if (node->kind == SeaNodeKind_NegI && (node->inputs[1]->kind == SeaNodeKind_ConstInt)) {
         return sea_create_const_int(fn, -node->inputs[1]->vint);
     } else  if (node->kind == SeaNodeKind_Not && node->inputs[1]->kind == SeaNodeKind_ConstInt) {
         return sea_create_const_int(fn, !node->inputs[1]->vint);
@@ -288,7 +288,7 @@ SeaNode *sea_idealize(SeaFunctionGraph *fn, SeaNode *node) {
         case SeaNodeKind_GreaterEqualI:
         case SeaNodeKind_LesserThanI:
         case SeaNodeKind_LesserEqualI:
-        case SeaNodeKind_NegateI:
+        case SeaNodeKind_NegI:
         case SeaNodeKind_AddI:
         case SeaNodeKind_SubI:
         case SeaNodeKind_MulI:
@@ -338,7 +338,7 @@ SeaNode *sea_peephole_opt(SeaFunctionGraph *fn, SeaNode *node) {
         if (single) {
             // todo join types because types might be different
             // single->type = sea_type_join(fn, node->type, single->type);
-            return sea_dead_code_elim(fn, node, single);
+            return single;
         } else {
             U32 gvn = sea_node_hash(node);
 

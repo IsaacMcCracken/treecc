@@ -1,0 +1,54 @@
+fn int test_while_countdown(int n) {
+    int i = n
+    int count = 0
+    while (i > 0) {
+        i = i + -1
+        count = count + 1
+    }
+    return count
+}
+
+fn int test_nested_while() {
+    int i = 0
+    int sum = 0
+    while (i < 3) {
+        int j = 0
+        while (j < 3) {
+            sum = sum + 1
+            j = j + 1
+        }
+        i = i + 1
+    }
+    return sum  // 9
+}
+
+
+
+// Test 6: If inside while
+fn int test_if_inside_while(int x) {
+    int i = 0
+    int result = 0
+    while (i < x) {
+        if (i < 5) {
+            result = result + 1
+        } else {
+            result = result + 2
+        }
+        i = i + 1
+    }
+    return result
+}
+
+
+// Test 7: While inside if
+fn int test_while_inside_if(int x) {
+    int result = 0
+    if (x > 0) {
+        int i = 0
+        while (i < x) {
+            result = result + i
+            i = i + 1
+        }
+    }
+    return result
+}

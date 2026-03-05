@@ -376,7 +376,7 @@ SeaType *sea_compute_type(SeaFunctionGraph *fn, SeaNode *n) {
              return compute_int_bin_op(fn, n);
          }
          case SeaNodeKind_Not:
-         case SeaNodeKind_NegateI: {
+         case SeaNodeKind_NegI: {
              return compute_int_urnary_op(fn, n);
          }
 

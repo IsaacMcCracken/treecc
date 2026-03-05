@@ -172,8 +172,12 @@ void rpo_cfg(Arena *arena, BitArray *visit, SeaNodeList *l, SeaNode *n) {
 SeaNode *cfg_zero(SeaNode *n) {
     SeaNode *cfg0 = n->inputs[0];
     switch (n->kind) {
-        case SeaNodeKind_Proj:
-            return cfg0->inputs[0];
+        case SeaNodeKind_Start: return 0;
+        case SeaNodeKind_Proj: {
+            if (sea_node_is_cfg(n))
+                return cfg0->inputs[0];
+        }
+
     }
 
     return cfg0;
@@ -215,6 +219,7 @@ void schedule_early(SeaFunctionGraph *fn, BitArray *visit, SeaNode *n) {
 
         }
 
+        Assert(early);
         sea_node_set_input(fn, n, early, 0);
     }
 }
@@ -295,6 +300,21 @@ void schedule_late(
 
 void dumb_print_bb(SeaNodeMap *m, SeaNode *bb);
 
+
+void validiate_scheduling(BitArray *visit, SeaNode *n) {
+    if (bits_get(visit, n->nid)) return;
+    bits_set(visit, n->nid);
+
+    if (!sea_node_is_cfg(n)) {
+        Assert(n->inputs[0]);
+    }
+
+    for EachNode(user_node, SeaUser, n->users) {
+        SeaNode *user = sea_user_val(user_node);
+        validiate_scheduling(visit, user);
+    }
+}
+
 void sea_global_code_motion(SeaFunctionGraph *fn) {
 
     // Early Scheduling
@@ -310,6 +330,17 @@ void sea_global_code_motion(SeaFunctionGraph *fn) {
             for EachIndex(i, cfg->inputlen) {
                 SeaNode *in = cfg->inputs[i];
                 schedule_early(fn, &visit, in);
+
+                if (
+                    cfg->kind == SeaNodeKind_Loop ||
+                    cfg->kind == SeaNodeKind_Region
+                ) {
+                    for EachNode(user_node, SeaUser, cfg->users) {
+                        SeaNode *user = sea_user_val(user_node);
+                        if (user->kind == SeaNodeKind_Phi)
+                            schedule_early(fn, &visit, user);
+                    }
+                }
             }
         }
         scratch_end(scratch);
@@ -321,14 +352,29 @@ void sea_global_code_motion(SeaFunctionGraph *fn) {
         Temp scratch = scratch_begin(0, 0);
         SeaNode **late  = push_array(scratch.arena, SeaNode*, fn->nidcap);
         SeaNode **nodes = push_array(scratch.arena, SeaNode*, fn->nidcap);
-
+        schedule_late(fn, late, nodes, fn->start);
         for EachIndex(i, fn->nidcap) {
             SeaNode *n = nodes[i];
-            if (n) sea_node_set_input(fn, n, late[i], 0);
+            SeaNode *block = late[i];
+            if (n) {
+                Assert(block);
+                sea_node_set_input(fn, n, block, 0);
+            }
         }
 
         scratch_end(scratch);
     }
+    #define SEA_DEBUG 1
+    #if SEA_DEBUG
+    {
+        Temp scratch = scratch_begin(0, 0);
+        BitArray visit = bits_alloc(scratch.arena, fn->nidcap);
+
+        validiate_scheduling(&visit, fn->start);
+        scratch_end(scratch);
+    }
+    #endif
+
 
     {
         // Demo scheduling
@@ -361,7 +407,6 @@ String8 sea_node_instr_label(Arena *temp, SeaNode *node) {
         case SeaNodeKind_MulI:         return str8_lit("mul");
         case SeaNodeKind_DivI:         return str8_lit("div");
         case SeaNodeKind_ModI:         return str8_lit("mod");
-        case SeaNodeKind_NegateI:      return str8_lit("negate");
         // Logic
         case SeaNodeKind_Not:          return str8_lit("notl");
         case SeaNodeKind_And:          return str8_lit("andl");

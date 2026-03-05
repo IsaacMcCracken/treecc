@@ -156,9 +156,9 @@ SeaNode *parse_urnary(Parser *p, SeaFunctionGraph *fn) {
         } break;
 
         case TokenKind_Minus: {
-            advance_token(p);
+            // advance_token(p);
             SeaNode *input = parse_urnary(p, fn);
-            n = sea_create_urnary_op(fn, SeaNodeKind_NegateI, input);
+            n = sea_create_urnary_op(fn, SeaNodeKind_NegI, input);
         } break;
 
         case TokenKind_LogicNot: {
@@ -266,7 +266,7 @@ void parse_if(Parser *p, SeaFunctionGraph *fn) {
     if (tok.kind == TokenKind_LBrace) {
         parse_block(p, fn);
     }
-
+    tscope = p->m.curr; // lmao hacky fix
     // Parse the false case
     p->m.curr = fscope;
     sea_node_set_ctrl(fn, p->m.curr, fnode);
@@ -285,6 +285,7 @@ void parse_if(Parser *p, SeaFunctionGraph *fn) {
             parser_error(p, "Expected 'if' or '{' got %.*s.", str8_varg(name));
         }
     }
+    fscope = p->m.curr;
 
     SeaNode *region = sea_merge_scopes(fn, &p->m, tscope);
     sea_node_set_ctrl(fn, p->m.curr, region);
@@ -336,6 +337,7 @@ void parse_while(Parser *p, SeaFunctionGraph *fn) {
     if (tok.kind == TokenKind_LBrace) {
         parse_block(p, fn);
     }
+    body_scope = p->m.curr; // hacky shit but idk
 
     p->m.curr = exit_scope;
 

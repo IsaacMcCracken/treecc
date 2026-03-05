@@ -351,7 +351,8 @@ void sea_scope_end_loop(SeaFunctionGraph *fn, SeaScopeManager *m, SeaNode *head,
         Assert(phi->kind == SeaNodeKind_Phi && phi->inputs[0] == loop);
         SeaNode *other = back->inputs[i];
         if (phi == other) {
-            sea_node_subsume(fn, phi, phi->inputs[1]);
+            sea_node_set_input(fn, phi, phi->inputs[1], 2);
+            // sea_node_subsume(fn, phi, phi->inputs[1]);
         } else {
             sea_node_set_input(fn, phi, other, 2);
         }
