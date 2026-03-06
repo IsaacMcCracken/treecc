@@ -19,6 +19,8 @@ enum {
   TokenKind_RParen,
   TokenKind_LBrace,
   TokenKind_RBrace,
+  TokenKind_LBrack,
+  TokenKind_RBrack,
 
   TokenKind_Plus,
   TokenKind_Minus,

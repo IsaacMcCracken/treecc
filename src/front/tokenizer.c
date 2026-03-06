@@ -161,6 +161,12 @@ Token *tokenize(Arena *arena, U32 *token_count, String8 src) {
                 case '}':
                     append_token(arena, TokenKind_RBrace, prev, curr, &count);
                     break;
+                case '[':
+                    append_token(arena, TokenKind_LBrack, prev, curr, &count);
+                    break;
+                case ']':
+                    append_token(arena, TokenKind_RBrack, prev, curr, &count);
+                    break;
                 case '+':
                     append_token(arena, TokenKind_Plus, prev, curr, &count);
                     break;

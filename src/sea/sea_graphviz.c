@@ -1,7 +1,7 @@
 #include "sea_internal.h"
 
 
-#define SEA_SHOW_GRAPH 0
+#define SEA_SHOW_GRAPH 1
 
 String8 sea_node_label(Arena *temp, SeaNode *node) {
     switch (node->kind) {
@@ -82,7 +82,7 @@ void sea_graphviz_visit_node(FILE *fp, Arena *temp, SeaNodeMap *map, SeaNode *no
         SeaNode *user = sea_user_val(user_node);
         sea_graphviz_visit_node(fp, temp, map, user);
         // fprintf(fp, "n%p -> n%p [color=\"blue\", dir=back];\n", user, node);
-        fprintf(fp, "n%p -> n%p [color=\"blue\"];\n", user, node);
+        // fprintf(fp, "n%p -> n%p [color=\"blue\"];\n", user, node);
 
 
     }

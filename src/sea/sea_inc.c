@@ -12,6 +12,7 @@
 #include "sea_codemotion.c"
 #include "sea_list_sched.c"
 #include "sea_codegen.c"
+#include "sea_print.c"
 
 
 #endif // SEA_INC_C

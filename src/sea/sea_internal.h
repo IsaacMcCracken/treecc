@@ -80,10 +80,13 @@ void sea_node_list_push_head(SeaNodeList *l, SeaNodeNode *n);
 
 // Codegen Phases
 void sea_global_code_motion(SeaFunctionGraph *fn);
-
+void sea_list_schedule(SeaFunctionGraph *fn);
 // scheduling info
 B32 node_is_blockhead(SeaNode *cfg);
+SeaNode *cfg_zero(SeaNode *n);
 
+// dumb print stuff
+String8 sea_node_instr_label(Arena *temp, SeaNode *node);
 
 
 #endif // SEA_INTERNAL_H

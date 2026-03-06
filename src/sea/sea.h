@@ -62,7 +62,11 @@ struct SeaTypeInt {
     S64 max;
 };
 
-
+typedef struct SeaTypeArray SeaTypeArray;
+struct SeaTypeArray {
+    SeaType **items; // must not converge to bottom all same data type
+    U64 len;
+};
 
 typedef struct SeaTypeStruct SeaTypeStruct;
 struct SeaTypeStruct {
@@ -364,6 +368,11 @@ SeaNode *sea_create_loop(SeaFunctionGraph *fn, SeaNode *prev_ctrl);
 SeaNode *sea_create_dead_ctrl(SeaFunctionGraph *fn);
 SeaNode *sea_create_region(SeaFunctionGraph *fn, SeaNode **inputs, U16 ctrl_count);
 SeaNode *sea_create_phi2(SeaFunctionGraph *fn, SeaNode *region, SeaNode *a, SeaNode *b);
+
+SeaNode *sea_create_func_call(SeaFunctionGraph *fn, SeaFunctionProto proto, SeaNode **args, U16 arg_count);
+SeaNode *sea_create_array_from_items(SeaFunctionGraph *fn, SeaNode *items, U16 len);
+// SeaNode *sea_create_array_zero(Seafunc)
+SeaNode *sea_create_array_store(SeaFunctionGraph *fn, SeaNode *item, U16 slot);
 
 // Scope Functionality For Building SSA
 void sea_begin_scope(SeaScopeManager *m);

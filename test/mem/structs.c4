@@ -5,7 +5,7 @@ struct Vec2 {
 
 
 fn int idk() {
-    Vec2 v
+    Vec2 v = {6, 7}
     v.x = 5
     v.y = 2
     return v.x

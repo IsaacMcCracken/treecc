@@ -1,0 +1,48 @@
+fn int const_fold() {
+    return 4 * 2 + 67
+}
+
+
+fn int const_prop(int x) {
+    return 4 + x + 6
+}
+
+// find this out
+fn int sub_expr_elim(int x) {
+    return x*x - x*x
+}
+
+fn int ssa_if(int x) {
+    if (x > 0) {
+        return 6
+    }
+    return 7
+}
+
+fn int ssa_while(int x) {
+    int i = 0
+    while (i < x) {
+        i = i + 1
+    }
+    return i
+}
+
+fn int dead_elim_01() {
+    int y = 5
+    if (y < 2) {
+        return 2
+    } else {
+        y = 7
+    }
+    return y
+}
+
+
+fn int dead_elim_02() {
+    int z = 345
+    if (z == 345) {
+        return 2
+    }
+
+    return z
+}

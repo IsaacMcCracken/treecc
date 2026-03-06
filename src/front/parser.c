@@ -127,6 +127,24 @@ SeaType *parse_type(Parser *p) {
             }
         } break;
 
+        case TokenKind_LBrack: {
+            advance_token(p);
+            tok = current_token(p);
+            String8 str = token_string(p, tok);
+            if (tok.kind != TokenKind_IntLit) {
+                parser_error(p, "expected a number got '%.*s' note:(will have slices in future)", str8_varg(str));
+            } else {
+                U64 len = (U64)s64_from_str8(str, 10);
+                advance_token(p);
+                tok = current_token(p);
+                if (tok.kind != TokenKind_RBrack) {
+                    parser_error(p, "todo error message");
+                }
+                advance_token(p);
+                SeaType *base = parse_type(p);
+            }
+        } break;
+
 
     }
 
