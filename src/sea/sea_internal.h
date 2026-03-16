@@ -27,9 +27,10 @@ typedef struct {
     U64 count;
 } SeaNodeList;
 
-
-
-
+typedef struct SeaRegMask SeaRegMask;
+struct SeaRegMask {
+  U64 m[4];
+};
 
 extern SeaType sea_type_IfBoth;
 extern SeaType sea_type_IfNeth;
@@ -37,6 +38,7 @@ extern SeaType sea_type_IfTrue;
 extern SeaType sea_type_IfFalse;
 
 // Node stuff
+SeaNode *sea_node_alloc(SeaFunctionGraph *fn, SeaNodeKind kind, U16 inputcap, U16 inputlen);
 void sea_node_set_input(SeaFunctionGraph *fn, SeaNode *node, SeaNode *input, U16 slot);
 U16 sea_node_append_input(SeaFunctionGraph *fn, SeaNode *node, SeaNode *input);
 void sea_node_remove_input(SeaFunctionGraph *fn, SeaNode *node, U16 slot);

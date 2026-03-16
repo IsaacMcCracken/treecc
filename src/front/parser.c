@@ -5,6 +5,8 @@
 void parse_stmt(Parser *p, SeaFunctionGraph *fn);
 void parse_block(Parser *p, SeaFunctionGraph *fn);
 SeaType *parse_type(Parser *p);
+void parse_func_call_expr(Parser *p, SeaFunctionGraph *fn);
+void parse_struct_expr(Parser *p, SeaFunctionGraph *fn, SeaType *t);
 
 Token current_token(Parser *p) {
     return p->tokens[p->curr];
@@ -153,7 +155,6 @@ SeaType *parse_type(Parser *p) {
 
 SeaNode *parse_urnary(Parser *p, SeaFunctionGraph *fn) {
     Token tok = current_token(p);
-    advance_token(p);
 
     SeaNode *n = 0;
 
@@ -162,27 +163,48 @@ SeaNode *parse_urnary(Parser *p, SeaFunctionGraph *fn) {
             String8 intstr =  token_string(p, tok);
             S64 v = s64_from_str8(intstr, 10);
             n = sea_create_const_int(fn, v);
+            advance_token(p);
         } break;
 
         case TokenKind_Identifier: {
             String8 name = token_string(p, tok);
             SeaNode *var = sea_scope_lookup_symbol(&p->m, name);
-            if (!var) {
+
+            SeaSymbolEntry *sym = sea_lookup_symbol(p->mod, name);
+
+
+            if (!var && !sym) {
                 parser_error(p, "in the expression the symbol '%.*s' is not defined.", str8_varg(name));
+            } else if (var) {
+                n = var;
+                advance_token(p);
+            } else if (sym) {
+                switch (sym->type->kind) {
+                    case SeaLatticeKind_Func: {
+                        parse_func_call_expr(p, fn);
+                    } break;
+                    case SeaLatticeKind_Struct: {
+                        parse_struct_expr(p, fn, 0);
+                    } break;
+                }
+            } else {
+                parser_error(p, "nah you can't have a variable named after a symbol");
+                // todo skip
             }
-            n = var;
         } break;
 
         case TokenKind_Minus: {
-            // advance_token(p);
+            advance_token(p);
             SeaNode *input = parse_urnary(p, fn);
             n = sea_create_urnary_op(fn, SeaNodeKind_NegI, input);
+            advance_token(p);
         } break;
 
         case TokenKind_LogicNot: {
             advance_token(p);
             SeaNode *input = parse_urnary(p, fn);
             n = sea_create_urnary_op(fn, SeaNodeKind_Not, input);
+            advance_token(p);
         } break;
 
         default: {
@@ -615,6 +637,80 @@ void parse_func(Parser *p) {
         sea_add_function_symbol(p->mod, proto);
     }
 }
+
+void parse_struct_expr(Parser *p, SeaFunctionGraph *fn, SeaType *t) {
+    if (t) Assert(t->kind == SeaLatticeKind_Struct);
+    Token tok = current_token(p);
+    String8 struct_name = { 0 };
+    if (tok.kind == TokenKind_Identifier) {
+        struct_name = token_string(p, tok);
+        advance_token(p);
+        if (t && !str8_match(struct_name, t->s.name, 0)) {
+            parser_error(p, "I fucking hate you chudd.");
+        }
+    }
+
+    tok = current_token(p);
+    if (tok.kind != TokenKind_LBrace) {
+        parser_error(p, "I fucking hate you chudd.");
+    }
+
+}
+
+void parse_func_call_expr(Parser *p, SeaFunctionGraph *fn) {
+    // enters in on the name token
+    Token func_token = current_token(p);
+    String8 func_name = token_string(p, func_token);
+
+    SeaSymbolEntry *sym = sea_lookup_symbol(p->mod, func_name);
+    SeaType *t = 0;
+    SeaFunctionProto proto = { 0 };
+    if (!sym) {
+        parser_error(p, "%.*s is not defined", str8_varg(func_name));
+    } else {
+        if (sym->type->kind != SeaLatticeKind_Func) {
+            parser_error(p, "%.*s is not defined as a function", str8_varg(func_name));
+        } else {
+            proto = sym->type->func;
+            t = sym->type;
+        }
+    }
+
+    advance_token(p);
+    skip_newlines(p);
+    Token tok = current_token(p);
+
+    Assert(tok.kind == TokenKind_LParen); // how else would you guess;
+    advance_token(p);
+    skip_newlines(p);
+    tok = current_token(p);
+
+    U64 arg_count = 0;
+    while (p->curr < p->tok_count && tok.kind != TokenKind_RParen) {
+        SeaNode *expr = parse_expr(p, fn);
+        // TODO(isaac): Type check
+
+        arg_count += 1;
+        skip_newlines(p);
+        tok = current_token(p);
+        if (tok.kind == TokenKind_Comma) {
+            advance_token(p);
+            skip_newlines(p);
+        } else if (tok.kind == TokenKind_RParen) {
+          break;
+        } else {
+            String8 str = token_string(p, tok);
+            parser_error(p, "Unexpected token %.*s", str8_varg(str));
+        }
+    }
+
+    if (arg_count != proto.args.count) {
+        parser_error(p, "Expect %d args in %.*s got %d", (int)proto.args.count, str8_varg(func_name), arg_count);
+    }
+
+    advance_token(p);
+}
+
 
 
 void parse_decl(Parser *p) {

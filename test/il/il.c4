@@ -1,0 +1,3 @@
+fn int sample(int x) {
+    return x + 3
+}

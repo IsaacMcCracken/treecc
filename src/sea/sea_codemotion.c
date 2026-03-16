@@ -242,7 +242,7 @@ SeaNode *use_block(SeaNode *n, SeaNode *user, SeaNode **late) {
 }
 
 B32 better(SeaNode *lca, SeaNode *best) {
-    B32 better_loop_depth = lca->vint < best->vint;
+    B32 better_loop_depth = sea_node_loop_depth(lca) < sea_node_loop_depth(best);
     B32 is_if = best->kind == SeaNodeKind_If;
     B32 greater_idepth = sea_node_idepth(lca) > sea_node_idepth(best);
     return better_loop_depth || is_if || greater_idepth;

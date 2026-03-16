@@ -29,6 +29,7 @@ typedef struct SeaFunctionProto SeaFunctionProto;
 struct SeaFunctionProto {
     String8 name;
     SeaFieldArray args;
+    SeaType *ret_type;
 };
 
 
@@ -178,7 +179,7 @@ typedef enum {
     SeaNodeKind_ConstInt,
     SeaNodeKind_Proj,
     SeaNodeKind_Phi,
-
+    SeaNodeKind_Call,
     //*****************//
     // Mem Nodes
     //*****************//
@@ -186,6 +187,7 @@ typedef enum {
     SeaNodeKind_Load,
 
     SeaNodeKind_COUNT
+    SeaNodeMachStart = 0x100;
 } SeaEnum;
 
 

@@ -13,10 +13,13 @@ fn int sub_expr_elim(int x) {
 }
 
 fn int ssa_if(int x) {
+    int y = 5
     if (x > 0) {
-        return 6
+        y = 2
+    } else {
+        y = 3
     }
-    return 7
+    return y
 }
 
 fn int ssa_while(int x) {
@@ -30,7 +33,7 @@ fn int ssa_while(int x) {
 fn int dead_elim_01() {
     int y = 5
     if (y < 2) {
-        return 2
+        return 23
     } else {
         y = 7
     }
@@ -40,7 +43,7 @@ fn int dead_elim_01() {
 
 fn int dead_elim_02() {
     int z = 345
-    if (z == 345) {
+    if (z >= 100) {
         return 2
     }
 

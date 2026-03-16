@@ -547,6 +547,10 @@ SeaNode *sea_create_region(SeaFunctionGraph *fn, SeaNode **inputs, U16 ctrl_coun
     return node;
 }
 
+SeaNode *sea_create_call(SeaFunctionGraph *fn, SeaFunctionProto proto, SeaNode *ctrl, SeaNode **args, U16 arg_count) {
+    SeaNode *node = sea_node_alloc(fn, SeaNodeKind_Call, arg_count + 1, arg_count + 1);
+
+}
 
 SeaNode *sea_create_alloca(SeaFunctionGraph *fn, SeaNode *ctrl, SeaType *t) {
     SeaNode *node = sea_node_alloc(fn, SeaNodeKind_AllocA, 1, 1);
