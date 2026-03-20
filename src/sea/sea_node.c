@@ -280,9 +280,14 @@ void sea_node_set_input(SeaFunctionGraph *fn, SeaNode *node, SeaNode *input, U16
 
 }
 
+void sea_node_set_input_raw(SeaNode *node, SeaNode *input, U16 slot) {
+    assert(slot < node->inputcap);
+    node->inputs[slot] = input;
+}
 
-
-
+void sea_node_remove_all_users_raw(SeaNode *node) {
+    node->users = 0;
+}
 
 
 
@@ -358,12 +363,38 @@ B32 sea_node_is_cfg(SeaNode *node) {
             return 1;
         case SeaNodeKind_Proj: {
             SeaNode *ctrl = node->inputs[0];
-            return (node->vint == 0 && ctrl->kind == SeaNodeKind_Start)||
+            B32 r1 =(node->vint == 0 && ctrl->kind == SeaNodeKind_Start)||
                     ctrl->kind == SeaNodeKind_If;
+            // this might break in the futre
+            B32 r2 = sea_node_is_mach(ctrl) && sea_node_is_cfg(ctrl);
+            return r1 || r2;
         }
+    }
+    if (sea_node_is_mach(node)) return mach_node_is_cfg(node);
+    return 0;
+}
+
+
+
+B32 sea_node_is_bool(SeaNode *node) {
+    switch (node->kind) {
+        case SeaNodeKind_Not:
+        case SeaNodeKind_And:
+        case SeaNodeKind_Or:
+        case SeaNodeKind_EqualI:
+        case SeaNodeKind_NotEqualI:
+        case SeaNodeKind_GreaterThanI:
+        case SeaNodeKind_GreaterEqualI:
+        case SeaNodeKind_LesserThanI:
+        case SeaNodeKind_LesserEqualI:
+            return 1;
     }
 
     return 0;
+}
+
+B32 sea_node_is_mach(SeaNode *node) {
+    return node->kind >= SeaNodeMachStart;
 }
 
 B32 sea_node_is_op(SeaNode *node) {
@@ -549,7 +580,12 @@ SeaNode *sea_create_region(SeaFunctionGraph *fn, SeaNode **inputs, U16 ctrl_coun
 
 SeaNode *sea_create_call(SeaFunctionGraph *fn, SeaFunctionProto proto, SeaNode *ctrl, SeaNode **args, U16 arg_count) {
     SeaNode *node = sea_node_alloc(fn, SeaNodeKind_Call, arg_count + 1, arg_count + 1);
-
+    for EachIndex(i, arg_count) {
+        sea_node_set_input(fn, node, args[i], i + 1);
+    }
+    sea_node_set_input(fn, node, ctrl, 0);
+    node->type = proto.ret_type;
+    return node;
 }
 
 SeaNode *sea_create_alloca(SeaFunctionGraph *fn, SeaNode *ctrl, SeaType *t) {

@@ -186,8 +186,14 @@ typedef enum {
     SeaNodeKind_AllocA,
     SeaNodeKind_Load,
 
-    SeaNodeKind_COUNT
-    SeaNodeMachStart = 0x100;
+    //*****************//
+    // Mem Nodes
+    //*****************//
+
+    SeaNodeKind_Copy,
+
+    SeaNodeKind_COUNT,
+    SeaNodeMachStart = 0x100,
 } SeaEnum;
 
 
@@ -277,6 +283,22 @@ struct SeaScopeManager {
     U64 default_cap; // capacity for new scopes
 };
 
+typedef struct SeaBlock SeaBlock;
+struct SeaBlock {
+    SeaBlock *next, *prev;
+    SeaNode *begin;
+    SeaNode *end;
+    SeaNode **nodes;
+    U16 nodelen;
+    U16 nodecap;
+};
+
+
+typedef struct SeaBlockList SeaBlockList;
+struct SeaBlockList {
+    SeaBlock *head, *tail;
+};
+
 
 typedef struct SeaFunctionGraph SeaFunctionGraph;
 struct SeaFunctionGraph {
@@ -290,6 +312,10 @@ struct SeaFunctionGraph {
     U64 node_count;
     U64 nidcap;
     // Optimization Data
+    SeaBlockList blocks;
+    SeaNode **sched;
+    U16 schedcap;
+    U16 schedlen;
     SeaWorkList *wl;
 
 };

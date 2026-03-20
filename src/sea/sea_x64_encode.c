@@ -1,31 +1,6 @@
 #include <core.h>
 
-typedef struct X64Emiter X64Emiter;
-struct X64Emiter {
-    Arena *arena;
-    Byte *code;
-    U64 len;
-};
 
-typedef U8 X64GPRegister;
-enum {
-    X64GPRegister_RAX,
-    X64GPRegister_RCX,
-    X64GPRegister_RDX,
-    X64GPRegister_RBX,
-    X64GPRegister_RSP,
-    X64GPRegister_RBP,
-    X64GPRegister_RSI,
-    X64GPRegister_RDI,
-    X64GPRegister_R8,
-    X64GPRegister_R9,
-    X64GPRegister_R10,
-    X64GPRegister_R11,
-    X64GPRegister_R12,
-    X64GPRegister_R13,
-    X64GPRegister_R14,
-    X64GPRegister_R15,
-};
 
 typedef U8 X64Mod;
 enum {
@@ -77,12 +52,7 @@ void x64_emit_s64(X64Emiter *e, S64 x) {
     x64_emiter_push_bytes(e, buf, 8);
 }
 
-void x64_emit_rex_prefix(
-    X64Emiter *e,
-    X64GPRegister reg,
-    X64GPRegister rm,
-    B32 wide
-) {
+void x64_emit_rex_prefix(X64Emiter *e, X64Reg reg, X64Reg rm, B32 wide) {
     if (reg < 8 && rm < 8 && !wide) return;
     Byte rex = 0x40;
     if (wide) rex |= 0x08;
@@ -91,18 +61,18 @@ void x64_emit_rex_prefix(
     x64_emiter_push_byte(e, rex);
 }
 
-void x64_mod_reg_rm(X64Emiter *e, U8 mod, X64GPRegister reg, X64GPRegister rm) {
+void x64_mod_reg_rm(X64Emiter *e, U8 mod, X64Reg reg, X64Reg rm) {
     Byte b = ((mod & 0x3) << 6) | ((reg & 0x7) << 3) | (rm & 0x7);
     x64_emiter_push_byte(e, b);
 }
 
-void x64_encode_mov_reg(X64Emiter *e, X64GPRegister dst, X64GPRegister src) {
+void x64_encode_mov_reg(X64Emiter *e, X64Reg dst, X64Reg src) {
     x64_emit_rex_prefix(e, src, dst, 1);
     x64_emiter_push_byte(e, 0x89);
     x64_mod_reg_rm(e, X64Mod_Reg, src, dst);
 }
 
-void x64_encode_mov_imm(X64Emiter *e, X64GPRegister reg, S64 imm) {
+void x64_encode_mov_imm(X64Emiter *e, X64Reg reg, S64 imm) {
     if (imm >= S32_MIN && imm <= S32_MAX) {
         x64_emit_rex_prefix(e, 0, reg, 1);
         x64_emiter_push_byte(e, 0xC7);
@@ -116,20 +86,20 @@ void x64_encode_mov_imm(X64Emiter *e, X64GPRegister reg, S64 imm) {
     }
 }
 
-void x64_encode_xor(X64Emiter *e, X64GPRegister a, X64GPRegister b) {
+void x64_encode_xor(X64Emiter *e, X64Reg a, X64Reg b) {
     x64_emit_rex_prefix(e, b, a, 1);
     x64_emiter_push_byte(e, 0x31);
     x64_mod_reg_rm(e, X64Mod_Reg, b, a);
 }
 
-void x64_encode_add(X64Emiter *e, X64GPRegister a, X64GPRegister b) {
+void x64_encode_add(X64Emiter *e, X64Reg a, X64Reg b) {
     x64_emit_rex_prefix(e, b, a, 1);
     x64_emiter_push_byte(e, 0x01);
     x64_mod_reg_rm(e, X64Mod_Reg, b, a);
 }
 
 
-void x64_encode_add_imm(X64Emiter *e, X64GPRegister reg, S32 imm) {
+void x64_encode_add_imm(X64Emiter *e, X64Reg reg, S32 imm) {
     x64_emit_rex_prefix(e, 0, reg, 1);
     if (imm < 128 && imm >= -128) {
         x64_emiter_push_byte(e, 0x83);
@@ -145,20 +115,20 @@ void x64_encode_add_imm(X64Emiter *e, X64GPRegister reg, S32 imm) {
     }
 }
 
-void x64_encode_sub(X64Emiter *e, X64GPRegister a, X64GPRegister b) {
+void x64_encode_sub(X64Emiter *e, X64Reg a, X64Reg b) {
     x64_emit_rex_prefix(e, b, a, 1);
     x64_emiter_push_byte(e, 0x29);
     x64_mod_reg_rm(e, X64Mod_Reg, b, a);
 }
 
-void x64_encode_imul(X64Emiter *e, X64GPRegister a, X64GPRegister b) {
+void x64_encode_imul(X64Emiter *e, X64Reg a, X64Reg b) {
     x64_emit_rex_prefix(e, b, a, 1);
     x64_emiter_push_byte(e, 0x0F);
     x64_emiter_push_byte(e, 0xAF);
     x64_mod_reg_rm(e, X64Mod_Reg, b, a);
 }
 
-void x64_encode_imul_imm(X64Emiter *e, X64GPRegister a, X64GPRegister b, S32 imm) {
+void x64_encode_imul_imm(X64Emiter *e, X64Reg a, X64Reg b, S32 imm) {
     x64_emit_rex_prefix(e, b, a, 1);
     if (imm < 128 && imm >= -128) {
         x64_emiter_push_byte(e, 0x6B);

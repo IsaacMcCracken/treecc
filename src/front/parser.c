@@ -5,7 +5,7 @@
 void parse_stmt(Parser *p, SeaFunctionGraph *fn);
 void parse_block(Parser *p, SeaFunctionGraph *fn);
 SeaType *parse_type(Parser *p);
-void parse_func_call_expr(Parser *p, SeaFunctionGraph *fn);
+SeaNode *parse_func_call_expr(Parser *p, SeaFunctionGraph *fn);
 void parse_struct_expr(Parser *p, SeaFunctionGraph *fn, SeaType *t);
 
 Token current_token(Parser *p) {
@@ -275,7 +275,7 @@ void parse_if(Parser *p, SeaFunctionGraph *fn) {
     }
 
     advance_token(p);
-    SeaNode *expr = parse_expr(p, fn);
+    SeaNode *expr = sea_peephole(fn, parse_expr(p, fn));
 
     tok = current_token(p);
     if (tok.kind != TokenKind_RParen) {
@@ -350,7 +350,7 @@ void parse_while(Parser *p, SeaFunctionGraph *fn) {
     }
 
     advance_token(p);
-    SeaNode *expr = parse_expr(p, fn);
+    SeaNode *expr = sea_peephole(fn, parse_expr(p, fn));
 
     tok = current_token(p);
     if (tok.kind != TokenKind_RParen) {
@@ -657,7 +657,7 @@ void parse_struct_expr(Parser *p, SeaFunctionGraph *fn, SeaType *t) {
 
 }
 
-void parse_func_call_expr(Parser *p, SeaFunctionGraph *fn) {
+SeaNode *parse_func_call_expr(Parser *p, SeaFunctionGraph *fn) {
     // enters in on the name token
     Token func_token = current_token(p);
     String8 func_name = token_string(p, func_token);

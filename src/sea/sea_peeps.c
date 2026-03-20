@@ -104,6 +104,8 @@ SeaNode *sea_idealize_int(SeaFunctionGraph *fn, SeaNode *node) {
 
 
 SeaNode *sea_idealize_phi(SeaFunctionGraph *fn, SeaNode *node) {
+    SeaNode *region = node->inputs[0];
+    if (region->inputs[region->inputlen - 1] == 0) return node; // in progress cannot optimize
     /**
      * x = Phi(5, x) -> Phi(5, 5) -> 5
      */
@@ -119,7 +121,6 @@ SeaNode *sea_idealize_phi(SeaFunctionGraph *fn, SeaNode *node) {
      * Phi(x, x, x) becomes x
      */
     SeaNode *live = 0;
-    SeaNode *region = node->inputs[0];
     for EachIndexFrom(i, 1, node->inputlen) {
         SeaNode *in = node->inputs[i];
         if (region->inputs[i]->type != &sea_type_CtrlDead && in != node) {

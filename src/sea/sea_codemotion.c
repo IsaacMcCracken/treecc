@@ -68,8 +68,8 @@ SeaNode *sea_node_lca(SeaNode *lhs, SeaNode *rhs) {
 
 U16 sea_node_loop_depth(SeaNode *n) {
     Assert(sea_node_is_cfg(n));
-    // Loop depth is cfg->vint
-    if (n->vint != 0) return n->vint;
+    // Loop depth is cfg->vint execpt for proj cuz proj has vint as its index
+    if (n->vint != 0 && n->kind != SeaNodeKind_Proj) return n->vint;
     switch (n->kind) {
         case SeaNodeKind_Region: {
             U16 d = sea_node_loop_depth(n->inputs[1]);
@@ -77,35 +77,25 @@ U16 sea_node_loop_depth(SeaNode *n) {
             return d;
         } break;
         case SeaNodeKind_Loop: {
-            U16 d = n->inputs[1]->vint + 1;
+            // Loop depth is set to the entry's loop depth + 1
+            U16 d = sea_node_loop_depth(n->inputs[1]) + 1;
             n->vint = d;
-            for (
-                SeaNode *idom = n->inputs[2];
-                idom != n;
-                idom = sea_node_idom(idom)
-            ) {
-                if (idom->kind == SeaNodeKind_Proj) {
-                    Assert(sea_node_is_cfg(idom));
 
-                    SeaNode *ifnode = idom->inputs[0];
-                    Assert(ifnode->kind == SeaNodeKind_If);
-
-                    for EachNode(user_node, SeaUser, ifnode->users) {
-                        SeaNode *user = sea_user_val(user_node);
-                        if (user->kind == SeaNodeKind_Proj &&
-                            user != idom &&
-                            sea_node_is_cfg(user)
-                        ) {
-                            user->vint = d - 1;
-                        }
-                    }
-                }
-            }
 
         } break;
         case SeaNodeKind_Proj: {
             // vint is already proj index
-            return sea_node_loop_depth(n->inputs[0]);
+            SeaNode *idom = n->inputs[0];
+            if (idom->kind == SeaNodeKind_If) {
+                SeaNode *if_idom = idom->inputs[0];
+                if (if_idom->kind == SeaNodeKind_Loop) {
+                    // if we the exit projection of a loopnode we decrement the loopdepth
+                    if (n->vint == 0) return sea_node_loop_depth(idom) - 1;
+                }
+            }
+
+            return sea_node_loop_depth(idom);
+
         } break;
         case SeaNodeKind_Start:
         case SeaNodeKind_Stop: {
@@ -126,6 +116,7 @@ U16 sea_node_loop_depth(SeaNode *n) {
 B32 node_is_pinned(SeaNode *n) {
     switch (n->kind) {
         case SeaNodeKind_Proj:
+        case SeaNodeKind_Copy:
         case SeaNodeKind_Phi: return 1;
     }
     return sea_node_is_cfg(n);
@@ -140,9 +131,10 @@ B32 node_is_pinned(SeaNode *n) {
 
 
  B32 is_forward_edge(SeaNode *u, SeaNode *d) {
-    return d && u && !(u->inputlen > 2) && (u->inputs[2] == d) && (
+
+    return d && u && !(u->inputlen > 2 && (u->inputs[2] == d) && (
         u->kind == SeaNodeKind_Loop ||
-        (u->kind == SeaNodeKind_Phi  && u->inputs[0]->kind == SeaNodeKind_Loop));
+        (u->kind == SeaNodeKind_Phi  && u->inputs[0]->kind == SeaNodeKind_Loop)));
  }
 
 void sea_node_list_push_tail(SeaNodeList *l, SeaNodeNode *n) {
@@ -292,8 +284,6 @@ void schedule_late(
     late[n->nid] = best;
 }
 
-void dumb_print_bb(SeaNodeMap *m, SeaNode *bb);
-
 
 void validiate_scheduling(BitArray *visit, SeaNode *n) {
     if (bits_get(visit, n->nid)) return;
@@ -358,7 +348,7 @@ void sea_global_code_motion(SeaFunctionGraph *fn) {
 
         scratch_end(scratch);
     }
-    #define SEA_DEBUG 1
+    #define SEA_DEBUG 0
     #if SEA_DEBUG
     {
         Temp scratch = scratch_begin(0, 0);

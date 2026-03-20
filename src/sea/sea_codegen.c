@@ -4,8 +4,10 @@
 
 void sea_codegen_fn_graph(SeaFunctionGraph *fn) {
     // TODO iterative peepholes
+    sea_instruction_selection(fn);
     sea_global_code_motion(fn);
-    // sea_list_schedule(fn);
+    sea_ssa_deconstruction(fn);
+    sea_local_schedule(fn);
 }
 
 
