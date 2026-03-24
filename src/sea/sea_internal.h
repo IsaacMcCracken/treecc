@@ -42,7 +42,7 @@ struct CallConv {
 
 typedef S64 (*SeaEncodeNode)(SeaEmitter *, SeaFunctionGraph *, SeaNode *);
 typedef SeaNode *(*SeaMachInstrSelectFn)(SeaFunctionGraph *, SeaNode *);
-typedef SeaNode *(*SeaMachJumpFn)(SeaFunctionGraph *);
+typedef SeaNode *(*SeaMachJumpFn)(SeaFunctionGraph *, S64 pos);
 typedef SeaNode *(*SeaMachSplitFn)(SeaFunctionGraph *);
 typedef RegMask (*SeaMachRegOutFn)(SeaNode *);
 typedef RegMask (*SeaMachRegInFn)(SeaNode *, U16);

@@ -55,14 +55,19 @@ U64 sea_pos_map_lookup(SeaPosMap *map, SeaNode *key, U64 default_val) {
 int cmp_block(const void *a, const void *b) {
     SeaBlock *bba = *(SeaBlock **)a;
     SeaBlock *bbb = *(SeaBlock **)b;
-    if (bba->begin->kind == SeaNodeKind_Proj) return -1;
-    if (bbb->begin->kind == SeaNodeKind_Proj) return 1;
+    if (bba->begin->kind == SeaNodeKind_Proj) return -1 - bba->begin->vint;
+    if (bbb->begin->kind == SeaNodeKind_Proj) return 1 + bbb->begin->vint;
     return 0;
 }
 
-void encode_block(SeaEmitter *e, SeaPosMap *map, SeaFunctionGraph *fn, SeaBlock *bb) {
-    sea_pos_map_insert(map, bb->begin, e->len);
+void encode_block(SeaEmitter *e, SeaFunctionGraph *fn, SeaPosMap *map, SeaBlock *bb, SeaBlock **sibs, U64 idx) {
+    U64 block_start = e->len;
+    sea_pos_map_insert(map, bb->begin, block_start);
 
+    for EachIndex(i, bb->nodelen) {
+        SeaNode *n = bb->nodes[i];
+        mach.encode(e, fn, n);
+    }
 
     // sort children
     Temp scratch = scratch_begin(&map->arena, 1);
@@ -77,21 +82,29 @@ void encode_block(SeaEmitter *e, SeaPosMap *map, SeaFunctionGraph *fn, SeaBlock 
 
     // use children here before ending scratch
     for EachIndex(i, child_count) {
-        encode_block(e, map, fn, children[i]);
+        encode_block(e, fn, map, children[i], children, i);
     }
 
     scratch_end(scratch);
 }
 
-void sea_encode_function(SeaModule *m, SeaFunctionGraph *fn) {
+void sea_encode(SeaModule *m, SeaFunctionGraph *fn) {
     SeaEmitter *e = &m->emit;
-    SeaSymbolEntry *entry = sea_lookup_symbol(m, fn.proto.name);
-    entry->pos_in_section = e->len;
+    U64 start = e->len;
+    SeaSymbolEntry *entry = sea_lookup_symbol(m, fn->proto.name);
+    entry->pos_in_section = start;
 
     Temp scratch = scratch_begin(0, 0);
     SeaPosMap map = sea_pos_map_init(scratch.arena, 401);
 
-    encode_block(e, fn, fn->domtree);
+    encode_block(e, fn, &map, fn->domtree, 0, 0);
 
     scratch_end(scratch);
+
+    for EachIndexFrom(i, start, e->len) {
+        printf("0x%02X ", e->code[i]);
+    }
+
+    printf("\n");
+
 }

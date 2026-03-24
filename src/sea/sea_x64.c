@@ -250,6 +250,7 @@ SeaMach mach = (SeaMach){
     .name = (String8){"x64", 3},
     .select = x64_select,
     .rmask_out = x64_rmask_out,
+    .rmask_in = x64_rmask_in,
     .encode = x64_encode,
     .conv = SYSV_CONV,
 };

@@ -27,11 +27,6 @@ struct LiveRanges {
     Arena *arena;
 };
 
-typedef struct LRegAlloc LRegAlloc;
-struct LRegAlloc {
-    LiveRanges *lr
-    U64 active_start;
-};
 
 static U64 live_ranges_next_prime(U64 n) {
     // heuristic: start search from 2x node count
@@ -100,8 +95,6 @@ LiveRange *live_ranges_lookup(LiveRanges *lr, SeaNode *key) {
     return NULL;
 }
 
-}
-
 
 B32 node_needs_reg(SeaNode *n) {
     switch (n->kind) {
@@ -142,8 +135,8 @@ B32 node_needs_reg(SeaNode *n) {
 }
 
 void build_intervals(SeaFunctionGraph *fn, LiveRanges *lr) {
-    for EachIndex(i, fn->shedlen) {
-        SeaNode *n = fn->shed[i];
+    for EachIndex(i, fn->schedlen) {
+        SeaNode *n = fn->sched[i];
         if (node_needs_reg(n)) {
             live_ranges_insert(lr, n, i);
         }
@@ -166,14 +159,14 @@ void reg_alloc(SeaFunctionGraph *fn, LiveRanges *lr) {
     LiveRange **active = push_array(scratch.arena, LiveRange *, lr->rangelen);
     U64 activelen = 0;
 
-    for EachIndex(i, lr.rangelen) {
+    for EachIndex(i, lr->rangelen) {
         // expire old intervals
         LiveRange *curr = lr->ranges[i];
         for EachIndex(j, activelen) {
             LiveRange *rng = active[j];
             if (rng->lastuse <= curr->def) {
                 // expired - free its register
-                free_regs = rmask_set(free_regs, rng->colour);
+                pool = rmask_set(pool, rng->colour);
                 // remove from active by swapping with last
                 active[j] = active[--activelen];
                 j--; // recheck this slot
@@ -211,6 +204,7 @@ void linear_reg_alloc(SeaFunctionGraph *fn) {
     build_intervals(fn, &lr);
     reg_alloc(fn, &lr);
     LiveRanges *reg_data = push_item(fn->arena, LiveRanges);
+    MemoryCopyStruct(reg_data, &lr);
     fn->reg_data = reg_data;
 }
 

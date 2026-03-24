@@ -32,7 +32,7 @@ void x64_encode_mov_reg(SeaEmitter *e, X64Reg dst, X64Reg src) {
 }
 
 void x64_encode_mov_imm(SeaEmitter *e, X64Reg reg, S64 imm) {
-    if (imm >= S32_MIN && imm <= S32_MAX) {
+    if (imm >= min_S32 && imm <= max_S32) {
         x64_emit_rex_prefix(e, 0, reg, 1);
         emitter_push_byte(e, 0xC7);
         x64_mod_reg_rm(e, X64Mod_Reg, 0, reg);
