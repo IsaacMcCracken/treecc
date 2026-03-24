@@ -1,0 +1,5 @@
+
+
+fn int square_plus_four(int x) {
+    return x * x + 4
+}

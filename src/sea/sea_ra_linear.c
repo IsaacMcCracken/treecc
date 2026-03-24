@@ -118,6 +118,9 @@ B32 node_needs_reg(SeaNode *n) {
         case SeaNodeKind_If:
             return 0;
 
+        case SeaNodeKind_Proj:
+            return !sea_node_is_cfg(n);
+
         // produce a value
         case X64Node_AddI:
         case X64Node_Add:
@@ -126,7 +129,7 @@ B32 node_needs_reg(SeaNode *n) {
         case X64Node_MulI:
         case X64Node_Mul:
         case X64Node_Set:
-        case SeaNodeKind_Proj:
+        case SeaNodeKind_Copy:
         case SeaNodeKind_Phi:
             return 1;
 
@@ -138,36 +141,89 @@ B32 node_needs_reg(SeaNode *n) {
     }
 }
 
-void live_ranges_fill(LiveRanges *lr, SeaFunctionGraph *fn) {
-    for EachIndex(i, fn->schedlen) {
-        SeaNode *n = fn->sched[i];
+void build_intervals(SeaFunctionGraph *fn, LiveRanges *lr) {
+    for EachIndex(i, fn->shedlen) {
+        SeaNode *n = fn->shed[i];
         if (node_needs_reg(n)) {
             live_ranges_insert(lr, n, i);
         }
 
-        for EachIndexFrom(j, 1, n->inputlen) {
-            SeaNode *in = n->inputs[j];
-            if (!in) continue;
-            if (rng) rng->lastuse = Max(rng->lastuse, i);
+        for EachIndexFrom(idx, 1, n->inputlen) {
+            SeaNode *in = n->inputs[idx];
+            if (node_needs_reg(in)) {
+                LiveRange *rng = live_ranges_lookup(lr, in);
+                rng->lastuse = Max(rng->lastuse, i);
+            }
         }
     }
 }
 
 
-void linear_reg_alloc(SeaFunctionGraph *fn) {
-    Temp scratch = scratch_begin(0, 0);
-    LiveRanges lr = live_ranges_init(scratch.arena, fn->node_count);
-    live_ranges_fill(&lr, fn);
+void reg_alloc(SeaFunctionGraph *fn, LiveRanges *lr) {
+    Temp scratch = scratch_begin(&lr->arena, 1);
 
-    LiveRanges **active = push_array(scratch.arena, LiveRange*, lr.len);
-    U64 active_start = 0, active_stop = 0;
+    RegMask pool = rmask_u64(0xFF);
+    LiveRange **active = push_array(scratch.arena, LiveRange *, lr->rangelen);
+    U64 activelen = 0;
 
-    for EachIndex(i, lr.len) {
+    for EachIndex(i, lr.rangelen) {
+        // expire old intervals
+        LiveRange *curr = lr->ranges[i];
+        for EachIndex(j, activelen) {
+            LiveRange *rng = active[j];
+            if (rng->lastuse <= curr->def) {
+                // expired - free its register
+                free_regs = rmask_set(free_regs, rng->colour);
+                // remove from active by swapping with last
+                active[j] = active[--activelen];
+                j--; // recheck this slot
+            }
+        }
 
+        // try to find optimial reg
+        RegMask r = mach.rmask_out(curr->node);
+        r = rmask_and(r, pool);
+        if (rmask_empty_p(r)) {
+            NotImplemented;
+        }
 
+        RegMask out = r;
+        for EachNode(user_node, SeaUser, curr->node->users) {
+            SeaNode *user = sea_user_val(user_node);
+            U16 slot = sea_user_slot(user_node);
+            RegMask in = mach.rmask_in(user, slot);
+            out = rmask_and(out, in);
+        }
+
+        S32 colour = rmask_empty_p(out) ? rmask_get_first_empty(r) : rmask_get_first_empty(out);
+        Assert(colour >= 0); // -1 means no reg found
+        curr->colour = (U8)colour;
+        pool = rmask_unset(pool, colour);
+        active[activelen++] = curr;
 
     }
 
-
     scratch_end(scratch);
+}
+
+void linear_reg_alloc(SeaFunctionGraph *fn) {
+    LiveRanges lr = live_ranges_init(fn->arena, fn->node_count);
+    build_intervals(fn, &lr);
+    reg_alloc(fn, &lr);
+    LiveRanges *reg_data = push_item(fn->arena, LiveRanges);
+    fn->reg_data = reg_data;
+}
+
+void sea_reg_alloc(SeaFunctionGraph *fn) {
+    linear_reg_alloc(fn);
+}
+
+S32 sea_get_reg_colour(SeaFunctionGraph *fn, SeaNode *n) {
+    LiveRanges *lr  = fn->reg_data;
+    S32 result = -1;
+
+    LiveRange *rng = live_ranges_lookup(lr, n);
+    if (rng) result = rng->colour;
+
+    return result;
 }

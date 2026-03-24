@@ -209,6 +209,14 @@ U16 sea_user_slot(SeaUser *user) {
     return user->slot;
 }
 
+U16 sea_node_count_users(SeaNode *n) {
+    U16 count = 0;
+    for EachNode(u, SeaUser, n->users) {
+        count += 1;
+    }
+    return count;
+}
+
 U16 sea_node_append_input(SeaFunctionGraph *fn, SeaNode *node, SeaNode *input) {
     if (node->inputs == 0) {
         sea_node_alloc_inputs(fn, node, 4);

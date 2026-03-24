@@ -75,7 +75,7 @@ static inline B32 rmask_eq(RegMask a, RegMask b) {
 
 static inline S32 rmask_get_first_empty(RegMask rm) {
     for EachIndex(i, 0x100) {
-        if (!rmask_get(rm, i)) return (S32)i;
+        if (rmask_get(rm, i)) return (S32)i;
     }
 
     return (S32)(-1);

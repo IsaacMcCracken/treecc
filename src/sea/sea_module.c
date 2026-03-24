@@ -15,13 +15,17 @@ SeaModule sea_create_module(void) {
     };
 
 
+    Arena *emit_arena = arena_alloc(.reserve_size = GB(2));
 
     SeaModule m = (SeaModule){
         .lock = rw_mutex_alloc(),
         .symbols = symbols,
+        .emit = emitter_init(emit_arena),
     };
 
     sea_lattice_init(&m);
+
+
 
     return m;
 }
@@ -45,6 +49,26 @@ SeaSymbolEntry *sea_lookup_symbol(SeaModule *m, String8 name) {
 
     rw_mutex_drop_r(m->lock);
 
+    return result;
+}
+
+B32 sea_set_symbol_pos(SeaModule *m, String8 name, U64 pos) {
+    B32 result = 0;
+    rw_mutex_take_r(m->lock);
+    U64 hash = u64_hash_from_str8(name);
+    U64 idx = hash % m->symbols.cap;
+    SeaSymbolEntry **cell = &m->symbols.cells[idx];
+
+    while (*cell) {
+        if (str8_match((*cell)->name, name, 0)) {
+            (*cell)->pos_in_section = pos;
+            result = 1;
+            break;
+        }
+        *cell = (*cell)->next_hash;
+    }
+
+    rw_mutex_drop_r(m->lock);
     return result;
 }
 
@@ -111,13 +135,13 @@ SeaFunctionGraph *sea_add_function(
 
     // This code is ugly as fuck;
     SeaAllocator *alloc = push_item(arena, SeaAllocator);
-    alloc->arena = arena;
     // Yippee
     SeaFunctionGraphNode *fn_node = push_item(arena, SeaFunctionGraphNode);
     SeaFunctionGraph *fn = &fn_node->fn;
 
     // Set intenals
     {
+        fn->arena = arena;
         fn->proto = proto;
         fn->m = mod;
         fn->alloc = alloc;

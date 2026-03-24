@@ -103,10 +103,29 @@ struct SeaSymbolEntry {
     SeaSymbolEntry *next_hash;
     String8 name;
     SeaType *type;
+    U64 pos_in_section;
+};
+
+typedef struct SeaUnresolvedEntry SeaUnresolvedEntry;
+struct SeaUnresolvedEntry {
+    SeaSymbolEntry *next;
+    SeaSymbolEntry *next_hash;
+    String8 name;
+    U64 pos_in_section;
 };
 
 typedef struct SeaSymbols SeaSymbols;
 struct SeaSymbols {
+    Arena *arena;
+    SeaSymbolEntry **cells;
+    U64 cap;
+    U64 count;
+    SeaSymbolEntry *first;
+    SeaSymbolEntry *last;
+};
+
+typedef struct SeaUnresolvedSymbols SeaUnresolvedSymbols;
+struct SeaUnresolvedSymbols {
     Arena *arena;
     SeaSymbolEntry **cells;
     U64 cap;
@@ -191,6 +210,7 @@ typedef enum {
     //*****************//
 
     SeaNodeKind_Copy,
+    SeaNodeKind_Move,
 
     SeaNodeKind_COUNT,
     SeaNodeMachStart = 0x100,
@@ -284,25 +304,26 @@ struct SeaScopeManager {
 };
 
 typedef struct SeaBlock SeaBlock;
+typedef struct SeaBlockList SeaBlockList;
+struct SeaBlockList {
+    SeaBlock *head, *tail;
+};
 struct SeaBlock {
+    SeaBlockList children;
     SeaBlock *next, *prev;
     SeaNode *begin;
     SeaNode *end;
     SeaNode **nodes;
+    U32 idx;
     U16 nodelen;
     U16 nodecap;
-};
-
-
-typedef struct SeaBlockList SeaBlockList;
-struct SeaBlockList {
-    SeaBlock *head, *tail;
 };
 
 
 typedef struct SeaFunctionGraph SeaFunctionGraph;
 struct SeaFunctionGraph {
     SeaModule *m;
+    Arena *arena;
     SeaAllocator *alloc;
     SeaFunctionProto proto;
     U64 deadspace;
@@ -312,10 +333,11 @@ struct SeaFunctionGraph {
     U64 node_count;
     U64 nidcap;
     // Optimization Data
-    SeaBlockList blocks;
+    SeaBlock *domtree;
     SeaNode **sched;
     U16 schedcap;
     U16 schedlen;
+    void *reg_data;
     SeaWorkList *wl;
 
 };
@@ -324,6 +346,7 @@ typedef struct SeaFunctionGraphNode SeaFunctionGraphNode;
 struct SeaFunctionGraphNode {
     SeaFunctionGraphNode *next;
     SeaFunctionGraph fn;
+
 };
 
 
@@ -334,12 +357,21 @@ struct SeaFunctionGraphList {
     U64 count;
 };
 
+typedef struct SeaEmitter SeaEmitter;
+struct SeaEmitter {
+    Arena *arena;
+    U8 *code;
+    U64 len;
+};
+
 struct SeaModule {
     RWMutex lock;
     SeaSymbols symbols;
     SeaFunctionGraphList functions;
     SeaTypeLattice *lat;
+    SeaEmitter emit;
 };
+
 
 
 extern SeaType sea_type_S64;

@@ -29,7 +29,8 @@ B32 bits_get(BitArray *bits, U64 idx) {
     U64 i = idx / 64;
     U64 d = idx % 64;
     U64 j = 1 << d;
-    return (bits->bits[i] & j) > 0;
+    B32 result = (bits->bits[i] & j) > 0;
+    return result;
 }
 
 void bits_clear(BitArray *bits) {

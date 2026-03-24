@@ -1,5 +1,14 @@
 #include "sea_internal.h"
 
+
+SeaNode *gen_2addr_move(SeaFunctionGraph *fn, SeaNode *n) {
+    SeaNode *in = n->inputs[1];
+    SeaNode *mv = sea_node_alloc(fn, SeaNodeKind_Move, 2, 2);
+    sea_node_set_input(fn, mv, in, 1);
+    sea_node_set_input(fn, n, mv, 1);
+    return mv;
+}
+
 SeaNode *sea_gen_copy(SeaFunctionGraph *fn, SeaNode *phi, U16 idx) {
     SeaNode *region = phi->inputs[0];
     SeaNode *n = sea_node_alloc(fn, SeaNodeKind_Copy, 2, 2);
@@ -15,6 +24,12 @@ SeaNode *sea_gen_copy(SeaFunctionGraph *fn, SeaNode *phi, U16 idx) {
 void dessa_walk(SeaFunctionGraph *fn, BitArray *visit, SeaNode *n) {
     if (!n || bits_get(visit, n->nid) || !sea_node_is_cfg(n)) return;
     bits_set(visit, n->nid);
+
+    if (is_2addr(n)) {
+        if (sea_node_count_users(n) > 1) {
+            gen_2addr_move(fn, n);
+        }
+    }
 
     for EachIndex(i, n->inputlen) {
         SeaNode *in = n->inputs[i];

@@ -12,7 +12,6 @@ struct FreeNode {
 };
 
 struct SeaAllocator {
-    Arena *arena;
     FreeNode *small_buckets[8]; // 8 - 64 bytes in increments of 8
     FreeNode *huge_buckets[6]; // 128 to 4096 bytes in increments of powers of 2
 };
@@ -41,6 +40,7 @@ struct CallConv {
     U8 arglen;
 };
 
+typedef S64 (*SeaEncodeNode)(SeaEmitter *, SeaFunctionGraph *, SeaNode *);
 typedef SeaNode *(*SeaMachInstrSelectFn)(SeaFunctionGraph *, SeaNode *);
 typedef SeaNode *(*SeaMachJumpFn)(SeaFunctionGraph *);
 typedef SeaNode *(*SeaMachSplitFn)(SeaFunctionGraph *);
@@ -50,6 +50,7 @@ typedef RegMask (*SeaMachRegInFn)(SeaNode *, U16);
 typedef struct SeaMach SeaMach;
     struct SeaMach {
     String8 name;
+    SeaEncodeNode encode;
     SeaMachInstrSelectFn select;
     SeaMachJumpFn jump;
     SeaMachSplitFn split;
@@ -79,12 +80,11 @@ SeaNode *sea_user_val(SeaUser *user);
 U16 sea_user_slot(SeaUser *user);
 void sea_node_set_input_raw(SeaNode *node, SeaNode *input, U16 slot);
 void sea_node_remove_all_users_raw(SeaNode *node);
+U16 sea_node_count_users(SeaNode *n);
 
 // Type Stuff
-// TODO(ISAAC) move lattice to module??
 void sea_lattice_init(SeaModule *m);
 void sea_lattice_insert(SeaFunctionGraph *fn, SeaType *t);
-// void sea_lattice_raw_insert(SeaFunctionGraph *fn, SeaType *t);
 
 // type creators
 SeaType *sea_type_const_int(SeaFunctionGraph *fn, S64 v);
@@ -130,6 +130,8 @@ void sea_instruction_selection(SeaFunctionGraph *fn);
 void sea_global_code_motion(SeaFunctionGraph *fn);
 void sea_ssa_deconstruction(SeaFunctionGraph *fn);
 void sea_list_schedule(SeaFunctionGraph *fn);
+void sea_reg_alloc(SeaFunctionGraph *fn);
+void sea_encode(SeaModule *m, SeaFunctionGraph *fn);
 
 // scheduling info
 B32 mach_node_is_cfg(SeaNode *n);
@@ -139,6 +141,15 @@ B32 sea_node_is_mach(SeaNode *node);
 B32 sea_node_is_bool(SeaNode *node);
 B32 is_forward_edge(SeaNode *u, SeaNode *d);
 
+// codegen
+SeaEmitter emitter_init(Arena *arena);
+void emitter_push_bytes(SeaEmitter *e, U8 *bytes, U64 len);
+void emitter_push_byte(SeaEmitter *e, U8 b);
+void emitter_push_s32(SeaEmitter *e, S32 x);
+void emitter_push_s64(SeaEmitter *e, S64 x);
+B32 sea_set_symbol_pos(SeaModule *m, String8 name, U64 pos);
+S32 sea_get_reg_colour(SeaFunctionGraph *fn, SeaNode *n);
+static B32 is_2addr(SeaNode *n);
 // dumb print stuff
 String8 sea_node_instr_label(Arena *temp, SeaNode *node);
 

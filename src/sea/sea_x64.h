@@ -54,4 +54,7 @@ enum {
     X64Reg_R15,
 };
 
+const char *x64_reg_name(X64Reg r);
+S64 x64_encode(SeaEmitter *e, SeaFunctionGraph *fn, SeaNode *n);
+
 #endif // SEA_X64_H

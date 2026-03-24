@@ -4,6 +4,30 @@
 #define X64_RET_MASK rmask_u64(1 << X64Reg_RAX)
 #define X64_NONE_MASK rmask_u64(0);
 
+
+const char *x64_reg_name(X64Reg r) {
+    switch (r) {
+        case X64Reg_RAX: return "rax";
+        case X64Reg_RCX: return "rcx";
+        case X64Reg_RDX: return "rdx";
+        case X64Reg_RBX: return "rbx";
+        case X64Reg_RSP: return "rsp";
+        case X64Reg_RBP: return "rbp";
+        case X64Reg_RSI: return "rsi";
+        case X64Reg_RDI: return "rdi";
+        case X64Reg_R8:  return "r8";
+        case X64Reg_R9:  return "r9";
+        case X64Reg_R10: return "r10";
+        case X64Reg_R11: return "r11";
+        case X64Reg_R12: return "r12";
+        case X64Reg_R13: return "r13";
+        case X64Reg_R14: return "r14";
+        case X64Reg_R15: return "r15";
+    }
+
+    return "wtf";
+}
+
 B32 mach_node_is_cfg(SeaNode *n) {
     switch (n->kind) {
         case X64Node_Ret:
@@ -226,5 +250,6 @@ SeaMach mach = (SeaMach){
     .name = (String8){"x64", 3},
     .select = x64_select,
     .rmask_out = x64_rmask_out,
+    .encode = x64_encode,
     .conv = SYSV_CONV,
 };

@@ -9,7 +9,7 @@ U64 sea_alloc_size(U64 size) {
 }
 
 void *sea_alloc(SeaFunctionGraph *fn, U64 size) {
-    return arena_push(fn->alloc->arena, size, 8, 1);
+    return arena_push(fn->arena, size, 8, 1);
     // Assert(size <= 4096);
     // if (size <= 64) {
     //     U64 new_size = AlignPow2(size, 8);
