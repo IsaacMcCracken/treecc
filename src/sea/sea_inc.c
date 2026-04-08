@@ -21,6 +21,6 @@
 #include "sea_print.c"
 #include "sea_x64.c"
 #include "sea_x64_encode.c"
-
+#include "sea_jit.c"
 
 #endif // SEA_INC_C

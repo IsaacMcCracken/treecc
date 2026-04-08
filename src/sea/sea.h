@@ -388,7 +388,7 @@ SeaFunctionGraph *sea_add_function(SeaModule *mod, SeaScopeManager *m, SeaFuncti
 void sea_add_function_symbol(SeaModule *m, SeaFunctionProto proto);
 void sea_add_struct_symbol(SeaModule *m, SeaTypeStruct s);
 void sea_codegen_module(SeaModule *m);
-
+S64 sea_jit(SeaModule *m, S64 x);
 
 void sea_node_print_expr_debug(SeaNode *expr);
 

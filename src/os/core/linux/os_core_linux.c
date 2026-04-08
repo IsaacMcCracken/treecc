@@ -207,6 +207,19 @@ os_release(void *ptr, U64 size)
   munmap(ptr, size);
 }
 
+
+internal void
+os_protect
+(void *ptr, U64 size, OS_AccessFlags flags)
+{
+    int prot = 0;
+    if (flags & OS_AccessFlag_Read) prot |= PROT_READ;
+    if (flags & OS_AccessFlag_Write) prot |= PROT_WRITE;
+    if (flags & OS_AccessFlag_Execute) prot |= PROT_EXEC;
+    mprotect(ptr, size, prot);
+}
+
+
 //- rjf: large pages
 
 internal void *

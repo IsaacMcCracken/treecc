@@ -170,6 +170,7 @@ internal void *os_reserve(U64 size);
 internal B32   os_commit(void *ptr, U64 size);
 internal void  os_decommit(void *ptr, U64 size);
 internal void  os_release(void *ptr, U64 size);
+internal void  os_protect(void *ptr, U64 size, OS_AccessFlags flags);
 
 //- rjf: large pages
 internal void *os_reserve_large(U64 size);
