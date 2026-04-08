@@ -117,6 +117,75 @@ void x64_encode_imul_imm(SeaEmitter *e, X64Reg a, X64Reg b, S32 imm) {
     }
 }
 
+void x64_encode_and(SeaEmitter *e, X64Reg a, X64Reg b) {
+    x64_emit_rex_prefix(e, b, a, 1);
+    emitter_push_byte(e, 0x21);
+    x64_mod_reg_rm(e, X64Mod_Reg, b, a);
+}
+
+void x64_encode_and_imm(SeaEmitter *e, X64Reg reg, S32 imm) {
+    x64_emit_rex_prefix(e, 0, reg, 1);
+    if (imm < 128 && imm >= -128) {
+        emitter_push_byte(e, 0x83);
+        x64_mod_reg_rm(e, X64Mod_Reg, 4, reg); // /4
+        S8 imm8 = (S8)imm;
+        emitter_push_byte(e, *(U8*)&imm8);
+    } else {
+        emitter_push_byte(e, 0x81);
+        x64_mod_reg_rm(e, X64Mod_Reg, 4, reg); // /4
+        emitter_push_s32(e, imm);
+    }
+}
+
+void x64_encode_or(SeaEmitter *e, X64Reg a, X64Reg b) {
+    x64_emit_rex_prefix(e, b, a, 1);
+    emitter_push_byte(e, 0x09);
+    x64_mod_reg_rm(e, X64Mod_Reg, b, a);
+}
+
+void x64_encode_or_imm(SeaEmitter *e, X64Reg reg, S32 imm) {
+    x64_emit_rex_prefix(e, 0, reg, 1);
+    if (imm < 128 && imm >= -128) {
+        emitter_push_byte(e, 0x83);
+        x64_mod_reg_rm(e, X64Mod_Reg, 1, reg); // /1
+        S8 imm8 = (S8)imm;
+        emitter_push_byte(e, *(U8*)&imm8);
+    } else {
+        emitter_push_byte(e, 0x81);
+        x64_mod_reg_rm(e, X64Mod_Reg, 1, reg); // /1
+        emitter_push_s32(e, imm);
+    }
+}
+
+void x64_encode_cmp_imm(SeaEmitter *e, X64Reg reg, S32 imm) {
+    x64_emit_rex_prefix(e, 0, reg, 1);
+    if (imm < 128 && imm >= -128) {
+        emitter_push_byte(e, 0x83);
+        x64_mod_reg_rm(e, X64Mod_Reg, 7, reg);
+        S8 imm8 = (S8)imm;
+        emitter_push_byte(e, *(U8*)&imm8);
+    } else {
+        emitter_push_byte(e, 0x81); // was decimal 83, should be 0x81
+        x64_mod_reg_rm(e, X64Mod_Reg, 7, reg);
+        emitter_push_s32(e, imm);
+    }
+}
+
+// 0f94c0
+void x64_encode_setcc(SeaEmitter *e, X64Reg reg, U8 cc) {
+    // need REX if reg >= 8, or bare 0x40 for SPL/BPL/SIL/DIL
+    if (reg >= 4) x64_emit_rex_prefix(e, 0, reg, 0);
+    emitter_push_byte(e, 0x0F);
+    emitter_push_byte(e, 0x90 + cc); // cc = 4 for e, 5 for ne, etc.
+    x64_mod_reg_rm(e, X64Mod_Reg, 0, reg);
+}
+
+void x64_encode_cmpe_imm(SeaEmitter *e, X64Reg dst, X64Reg src, S32 imm) {
+    x64_encode_cmp_imm(e, src, imm);
+    x64_encode_setcc(e, dst, 0x4); // 0x4 = e (equal)
+    x64_encode_and_imm(e, dst, 1);
+}
+
 void x64_encode_syscall(SeaEmitter *e) {
     U8 b[2] = {0x0F, 0x05};
     emitter_push_bytes(e, b, 2);
@@ -131,8 +200,17 @@ void x64_encode_near_jmp(SeaEmitter *e, S32 offset) {
         emitter_push_byte(e, 0xE9);
         emitter_push_s32(e, offset);
     }
-
 }
+
+S64 x64_encode_near_jz(SeaEmitter *e, X64Reg reg) {
+    emitter_push_byte(e, 0x0F);
+    emitter_push_byte(e, 0x84);
+    S64 end = e->len;
+    emitter_push_s32(e, 0);
+    return end;
+}
+
+
 
 void x64_encode_ret(SeaEmitter *e) {
     emitter_push_byte(e, 0xC3);
@@ -140,6 +218,7 @@ void x64_encode_ret(SeaEmitter *e) {
 
 static B32 is_2addr(SeaNode *n) {
     switch (n->kind) {
+        case SeaNodeKind_Copy:
         case X64Node_Add:
         case X64Node_AddI:
         case X64Node_Sub:
@@ -200,13 +279,39 @@ S64 x64_encode(SeaEmitter *e, SeaFunctionGraph *fn, SeaNode *n) {
             }
             x64_encode_ret(e);
         } break;
+        case X64Node_CmpEqI: {
+            U8 in_colour = sea_get_reg_colour(fn, n->inputs[1]);
+            x64_encode_cmpe_imm(e, node_colour, in_colour, n->vint);
+        }break;
+        case X64Node_Jmp: {
+            SeaNode *branches[2] = { 0 };
+            U16 num = 0;
+            for EachNode(user_node, SeaUser, n->users) {
+                SeaNode *user = sea_user_val(user_node);
+                if (sea_node_is_cfg(user) && user->kind == SeaNodeKind_Proj) {
+                    branches[user->vint] = user;
+                    num += 1;
+                }
+            }
+            Assert(num == 2);
+            U8 in_colour = sea_get_reg_colour(fn, n->inputs[1]);
+            return x64_encode_near_jz(e, in_colour);
+        } break;
         case SeaNodeKind_Copy: {
             U8 in_colour = sea_get_reg_colour(fn, n->inputs[1]);
             if (node_colour != in_colour) {
                 x64_encode_mov_reg(e, node_colour, in_colour);
             }
         } break;
-        default: break;
+        case SeaNodeKind_Proj: break;
+        case SeaNodeKind_Phi: {
+            U8 lhs = sea_get_reg_colour(fn, n->inputs[1]);
+            U8 rhs = sea_get_reg_colour(fn, n->inputs[2]);
+            if (rhs != lhs) {
+                x64_encode_mov_reg(e, lhs, rhs);
+            }
+        } break;
+        default: Trap();
     }
 
     return -1;

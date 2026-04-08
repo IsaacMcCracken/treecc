@@ -8,6 +8,9 @@ void sea_codegen_fn_graph(SeaModule *m, SeaFunctionGraph *fn) {
     sea_global_code_motion(fn);
     sea_ssa_deconstruction(fn);
     sea_local_schedule(fn);
+    char buf[512];
+    snprintf(buf, 512, "graphs/%.*s.dot", str8_varg(fn->proto.name));
+    sea_graphviz(buf, fn);
     sea_reg_alloc(fn);
     sea_encode(m, fn);
 

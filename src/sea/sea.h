@@ -431,7 +431,7 @@ SeaNode *sea_create_phi2(SeaFunctionGraph *fn, SeaNode *region, SeaNode *a, SeaN
 
 SeaNode *sea_create_func_call(SeaFunctionGraph *fn, SeaFunctionProto proto, SeaNode **args, U16 arg_count);
 SeaNode *sea_create_array_from_items(SeaFunctionGraph *fn, SeaNode *items, U16 len);
-// SeaNode *sea_create_array_zero(Seafunc)
+SeaNode *sea_create_array_zero(SeaFunctionGraph *fn, U64 len);
 SeaNode *sea_create_array_store(SeaFunctionGraph *fn, SeaNode *item, U16 slot);
 
 // Scope Functionality For Building SSA

@@ -187,7 +187,13 @@ SeaBlock *build_dom_tree(SeaFunctionGraph *fn, SeaIdomMap *map, BitArray *visit,
         if (idom) {
             build_dom_tree(fn, map, visit, idom);
             SeaBlock *bbdom = sea_idom_map_lookup(map, idom);
-            Assert(bbdom);  // missing semicolon
+            Assert(bbdom);
+            // hacky solution to get proper order
+            if (n->kind == SeaNodeKind_Region) {
+                for EachIndexFrom(i, 0, n->inputlen) {
+                    build_dom_tree(fn, map, visit, n->inputs[i]);
+                }
+            }
             DLLPushBack(bbdom->children.head, bbdom->children.tail, bb); // missing semicolon
         } else {
             fn->domtree = bb; // set root

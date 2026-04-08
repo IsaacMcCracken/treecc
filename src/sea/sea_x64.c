@@ -104,11 +104,6 @@ SeaNode *x64_create_div(SeaFunctionGraph *fn, SeaNode *in) {
 }
 
 
-SeaNode *x64_create_cmp(SeaFunctionGraph *fn, SeaNode *in) {
-    SeaNode *n = sea_node_alloc(fn, X64Node_Set, 2, 2);
-    sea_node_set_input(fn, n, in->inputs[1], 1);
-    return n;
-}
 
 SeaNode *x64_create_jmp(SeaFunctionGraph *fn, SeaNode *ifnode) {
     SeaNode *n = sea_node_alloc(fn, X64Node_Jmp, 2, 2);
@@ -142,6 +137,24 @@ SeaNode *mach_create_clone(SeaFunctionGraph *fn, SeaNode *in) {
     return n;
 }
 
+SeaNode *x64_create_cmp_eq(SeaFunctionGraph *fn, SeaNode *in) {
+    SeaNode *lhs = in->inputs[1];
+    SeaNode *rhs = in->inputs[2];
+    if (rhs->kind == SeaNodeKind_ConstInt) {
+        SeaNode *n = sea_node_alloc(fn, X64Node_CmpEqI, 2, 2);
+        sea_node_set_input(fn, n, lhs, 1);
+        n->vint = rhs->vint;
+        return n;
+    } else {
+        SeaNode *n = sea_node_alloc(fn, X64Node_CmpEq, 3, 3);
+        sea_node_set_input(fn, n, lhs, 1);
+        sea_node_set_input(fn, n, rhs, 2);
+        return n;
+    }
+}
+
+
+
 // Top-level selector: walks a generic IR node and emits x64 machine nodes
 SeaNode *x64_select(SeaFunctionGraph *fn, SeaNode *in) {
     switch (in->kind) {
@@ -154,9 +167,9 @@ SeaNode *x64_select(SeaFunctionGraph *fn, SeaNode *in) {
         case SeaNodeKind_If:            return x64_create_jmp(fn, in);
         case SeaNodeKind_Return:        return x64_create_ret(fn, in);
 
+        case SeaNodeKind_EqualI: return x64_create_cmp_eq(fn, in);
         case SeaNodeKind_And:
         case SeaNodeKind_Or:
-        case SeaNodeKind_EqualI:
         case SeaNodeKind_NotEqualI:
         case SeaNodeKind_GreaterThanI:
         case SeaNodeKind_GreaterEqualI:
@@ -188,21 +201,32 @@ RegMask x64_rmask_out(SeaNode *n) {
         } break;
         // No output
         case X64Node_Ret:
-        case X64Node_Jmp:
-        case X64Node_CmpI:
-        case X64Node_Cmp:   return X64_NONE_MASK;
+        case X64Node_Jmp: return X64_NONE_MASK;
 
         // Fixed output: RAX only
         case X64Node_Div:   return X64_RET_MASK;
 
         // Any GPR
+        case SeaNodeKind_Phi:
+        case SeaNodeKind_Copy:
+        case X64Node_CmpEqI:    // == immediate
+        case X64Node_CmpEq:     // ==
+        case X64Node_CmpNeqI:   // != immediate
+        case X64Node_CmpNeq:    // !=
+        case X64Node_CmpGtI:    // > immediate
+        case X64Node_CmpGt:     // >
+        case X64Node_CmpGeI:    // >= immediate
+        case X64Node_CmpGe:     // >=
+        case X64Node_CmpLtI:    // < immediate
+        case X64Node_CmpLt:     //
+        case X64Node_CmpLeI:    // <= immediate
+        case X64Node_CmpLe:     // <=
         case X64Node_AddI:
         case X64Node_Add:
         case X64Node_SubI:
         case X64Node_Sub:
         case X64Node_MulI:
-        case X64Node_Mul:
-        case X64Node_Set:   return X64_RMASK;
+        case X64Node_Mul: return X64_RMASK;
 
         default: { Trap(); } break;
     }
@@ -223,8 +247,23 @@ RegMask x64_rmask_in(SeaNode *node, U16 idx) {
             break;
         }
 
+        case SeaNodeKind_Phi:
+            if (idx != 0) return X64_RMASK;
+            break;
+        case SeaNodeKind_Copy:
         case X64Node_Jmp:
-        case X64Node_Set:
+        case X64Node_CmpEqI:    // == immediate
+        case X64Node_CmpEq:     // ==
+        case X64Node_CmpNeqI:   // != immediate
+        case X64Node_CmpNeq:    // !=
+        case X64Node_CmpGtI:    // > immediate
+        case X64Node_CmpGt:     // >
+        case X64Node_CmpGeI:    // >= immediate
+        case X64Node_CmpGe:     // >=
+        case X64Node_CmpLtI:    // < immediate
+        case X64Node_CmpLt:     //
+        case X64Node_CmpLeI:    // <= immediate
+        case X64Node_CmpLe:     // <=
         case X64Node_AddI:
         case X64Node_SubI:
         case X64Node_MulI: {
@@ -235,8 +274,7 @@ RegMask x64_rmask_in(SeaNode *node, U16 idx) {
 
         case X64Node_Add:
         case X64Node_Sub:
-        case X64Node_Mul:
-        case X64Node_Cmp: {
+        case X64Node_Mul: {
             if (idx == 0) return X64_NONE_MASK; // ctrl
             if (idx == 1) return X64_RMASK;     // lhs
             if (idx == 2) return X64_RMASK;     // rhs

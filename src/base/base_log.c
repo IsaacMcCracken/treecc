@@ -5,9 +5,9 @@
 //~ rjf: Globals/Thread-Locals
 
 C_LINKAGE thread_static Log *log_active;
-#if !BUILD_SUPPLEMENTARY_UNIT
-C_LINKAGE thread_static Log *log_active = 0;
-#endif
+// #if !BUILD_SUPPLEMENTARY_UNIT
+// C_LINKAGE thread_static Log *log_active = 0;
+// #endif
 
 ////////////////////////////////
 //~ rjf: Log Creation/Selection

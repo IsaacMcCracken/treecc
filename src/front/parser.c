@@ -144,6 +144,8 @@ SeaType *parse_type(Parser *p) {
                 }
                 advance_token(p);
                 SeaType *base = parse_type(p);
+                // TODO
+                // SeaType *type = sea_array_type(fn, base, len, 0);
             }
         } break;
 

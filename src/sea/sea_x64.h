@@ -29,9 +29,18 @@ enum {
     // Control Flow
     X64Node_Ret,
     X64Node_Jmp,
-    X64Node_Set,
-    X64Node_CmpI,
-    X64Node_Cmp,
+    X64Node_CmpEqI,    // == immediate
+    X64Node_CmpEq,     // ==
+    X64Node_CmpNeqI,   // != immediate
+    X64Node_CmpNeq,    // !=
+    X64Node_CmpGtI,    // > immediate
+    X64Node_CmpGt,     // >
+    X64Node_CmpGeI,    // >= immediate
+    X64Node_CmpGe,     // >=
+    X64Node_CmpLtI,    // < immediate
+    X64Node_CmpLt,     //
+    X64Node_CmpLeI,    // <= immediate
+    X64Node_CmpLe,     // <=
 };
 
 typedef U8 X64Reg;

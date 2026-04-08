@@ -6,7 +6,7 @@ struct LiveRange {
     SeaNode *node;
     U32 def;
     U32 lastuse;
-    U8 colour;
+    S16 colour;
 };
 
 typedef struct LiveRangeCell LiveRangeCell;
@@ -79,6 +79,7 @@ LiveRange *live_ranges_insert(LiveRanges *lr, SeaNode *key, U64 def) {
     rng->def = def;
     rng->lastuse = def;
     rng->node = key;
+    rng->colour = -1;
 
     return rng;
 }
@@ -101,8 +102,6 @@ B32 node_needs_reg(SeaNode *n) {
         // control flow - no output value
         case X64Node_Ret:
         case X64Node_Jmp:
-        case X64Node_Cmp:
-        case X64Node_CmpI:
         // cloned nodes that carry no value
         case SeaNodeKind_Start:
         case SeaNodeKind_Stop:
@@ -115,13 +114,24 @@ B32 node_needs_reg(SeaNode *n) {
             return !sea_node_is_cfg(n);
 
         // produce a value
+        case X64Node_CmpEqI:    // == immediate
+        case X64Node_CmpEq:     // ==
+        case X64Node_CmpNeqI:   // != immediate
+        case X64Node_CmpNeq:    // !=
+        case X64Node_CmpGtI:    // > immediate
+        case X64Node_CmpGt:     // >
+        case X64Node_CmpGeI:    // >= immediate
+        case X64Node_CmpGe:     // >=
+        case X64Node_CmpLtI:    // < immediate
+        case X64Node_CmpLt:     //
+        case X64Node_CmpLeI:    // <= immediate
+        case X64Node_CmpLe:     // <=
         case X64Node_AddI:
         case X64Node_Add:
         case X64Node_SubI:
         case X64Node_Sub:
         case X64Node_MulI:
         case X64Node_Mul:
-        case X64Node_Set:
         case SeaNodeKind_Copy:
         case SeaNodeKind_Phi:
             return 1;
@@ -173,13 +183,15 @@ void reg_alloc(SeaFunctionGraph *fn, LiveRanges *lr) {
             }
         }
 
-        // try to find optimial reg
-        RegMask r = mach.rmask_out(curr->node);
-        r = rmask_and(r, pool);
-        if (rmask_empty_p(r)) {
+        if (activelen > 16) {
+            // spill
             NotImplemented;
         }
 
+        if (curr->node->kind == SeaNodeKind_Copy)
+            continue; // color on phi
+
+        RegMask r = mach.rmask_out(curr->node);
         RegMask out = r;
         for EachNode(user_node, SeaUser, curr->node->users) {
             SeaNode *user = sea_user_val(user_node);
@@ -188,11 +200,23 @@ void reg_alloc(SeaFunctionGraph *fn, LiveRanges *lr) {
             out = rmask_and(out, in);
         }
 
+
         S32 colour = rmask_empty_p(out) ? rmask_get_first_empty(r) : rmask_get_first_empty(out);
         Assert(colour >= 0); // -1 means no reg found
         curr->colour = (U8)colour;
         pool = rmask_unset(pool, colour);
         active[activelen++] = curr;
+
+        if (curr->node->kind == SeaNodeKind_Phi) {
+            for EachIndexFrom(k, 1, curr->node->inputlen) {
+                SeaNode *copy = curr->node->inputs[k];
+                Assert(copy->kind == SeaNodeKind_Copy);
+                LiveRange *crng = live_ranges_lookup(lr, copy);
+                crng->colour = curr->colour;
+            }
+        }
+
+
 
     }
 

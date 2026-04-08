@@ -73,10 +73,9 @@ String8 sea_node_label(Arena *temp, SeaNode *node) {
         case X64Node_Div:  return str8_lit("idiv");
         // X64 Control Flow
         case X64Node_Ret:  return str8_lit("ret");
+        case X64Node_CmpEq: return str8_lit("cmpe");
+        case X64Node_CmpEqI: return str8f(temp, "cmpe $%lld", node->vint);
         case X64Node_Jmp:  return str8_lit("jmp");
-        case X64Node_Set:  return str8_lit("set");
-        case X64Node_CmpI: return str8f(temp, "cmp $%lld", node->vint);
-        case X64Node_Cmp:  return str8_lit("cmp");
     }
 
     return str8f(temp, "unknown(%d)", (int)node->kind);

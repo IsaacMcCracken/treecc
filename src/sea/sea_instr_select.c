@@ -1,6 +1,5 @@
 #include "sea_internal.h"
 
-extern SeaMach mach;
 
 typedef struct SeaNodePairCell SeaNodePairCell;
 struct SeaNodePairCell {

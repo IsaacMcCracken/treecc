@@ -103,6 +103,7 @@ SeaType *sea_type_meet(SeaFunctionGraph *fn, SeaType *a, SeaType *b);
 B32 sea_type_is_const_int(SeaType *t);
 S64 sea_type_const_int_val(SeaType *t);
 B32 sea_type_is_const_int(SeaType *t);
+B32 sea_type_is_bool(SeaType *t);
 
 U16 sea_node_idepth(SeaNode *n);
 SeaNode *sea_node_idom(SeaNode *node);
@@ -147,6 +148,7 @@ void emitter_push_bytes(SeaEmitter *e, U8 *bytes, U64 len);
 void emitter_push_byte(SeaEmitter *e, U8 b);
 void emitter_push_s32(SeaEmitter *e, S32 x);
 void emitter_push_s64(SeaEmitter *e, S64 x);
+void emitter_write_s32(SeaEmitter *e, U64 loc, S32 x);
 B32 sea_set_symbol_pos(SeaModule *m, String8 name, U64 pos);
 S32 sea_get_reg_colour(SeaFunctionGraph *fn, SeaNode *n);
 static B32 is_2addr(SeaNode *n);

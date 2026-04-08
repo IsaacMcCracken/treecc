@@ -254,6 +254,16 @@ B32 sea_type_is_const_int(SeaType *t) {
     return 0;
 }
 
+B32 sea_type_is_bool(SeaType *t) {
+    switch (t->kind) {
+        case SeaLatticeKind_Int: {
+            return (t->i.min == 0) && (t->i.max == 1);
+        } break;
+    }
+
+    return 0;
+}
+
 S64 sea_type_const_int_val(SeaType *t) {
     Assert(t->i.min == t->i.max);
     return t->i.min;
@@ -270,6 +280,10 @@ SeaType *sea_type_tuple(SeaFunctionGraph *fn, SeaType **elems, U64 count) {
 
     return sea_type_canonical(fn->m, &tup);
 }
+
+// SeaType *sea_type_array(SeaFunctionGraph *fn, SeaType *base, SeaType **elems, U64 len) {
+
+// }
 
 SeaType *sea_type_const_int(SeaFunctionGraph *fn, S64 v) {
     SeaType t = {

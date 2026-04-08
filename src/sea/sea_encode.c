@@ -14,6 +14,14 @@ struct SeaPosMap {
     Arena *arena;
 };
 
+typedef struct SeaPatch SeaPatch;
+struct SeaPatch {
+    U64 loc;
+    SeaNode *desired;
+};
+
+#define MAX_PATCHES 128
+
 SeaPosMap sea_pos_map_init(Arena *arena, U64 cap) {
     return (SeaPosMap){
         .cells = push_array(arena, SeaPosCell*, cap),
@@ -39,7 +47,7 @@ void sea_pos_map_insert(SeaPosMap *map, SeaNode *key, U64 value) {
     *slot = cell;
 }
 
-U64 sea_pos_map_lookup(SeaPosMap *map, SeaNode *key, U64 default_val) {
+S64 sea_pos_map_lookup(SeaPosMap *map, SeaNode *key) {
     U64 hash = sea_node_hash(key);
     SeaPosCell **slot = &map->cells[hash % map->cap];
     while (*slot) {
@@ -48,7 +56,7 @@ U64 sea_pos_map_lookup(SeaPosMap *map, SeaNode *key, U64 default_val) {
         }
         slot = &(*slot)->next;
     }
-    return default_val;
+    return -1;
 }
 
 
@@ -60,32 +68,44 @@ int cmp_block(const void *a, const void *b) {
     return 0;
 }
 
-void encode_block(SeaEmitter *e, SeaFunctionGraph *fn, SeaPosMap *map, SeaBlock *bb, SeaBlock **sibs, U64 idx) {
+void encode_block(
+    SeaEmitter *e,
+    SeaFunctionGraph *fn,
+    SeaPosMap *map,
+    SeaBlock *bb,
+    SeaPatch *patches,
+    U16 *patchlen
+) {
     U64 block_start = e->len;
     sea_pos_map_insert(map, bb->begin, block_start);
 
     for EachIndex(i, bb->nodelen) {
         SeaNode *n = bb->nodes[i];
-        mach.encode(e, fn, n);
+        S64 loc = mach.encode(e, fn, n);
+        if (n->kind == X64Node_Jmp) {
+            Assert(loc != -1);
+            // find false branch
+            SeaNode *desired = 0;
+            for EachNode(user_node, SeaUser, n->users) {
+                SeaNode *user = sea_user_val(user_node);
+                if (sea_node_is_cfg(user) &&
+                    user->kind == SeaNodeKind_Proj &&
+                    user->vint == 0
+                ) {
+                    desired = user;
+                    break;
+                }
+            }
+            patches[*patchlen] = (SeaPatch){.loc = loc, .desired = desired};
+            *patchlen += 1;
+            Assert(*patchlen <= MAX_PATCHES);
+        }
     }
 
-    // sort children
-    Temp scratch = scratch_begin(&map->arena, 1);
-    SeaBlock **children = arena_pos_ptr(scratch.arena);
-    U64 child_count = 0;
     for EachNode(_bb, SeaBlock, bb->children.head) {
-        SeaBlock **kid = push_item(scratch.arena, SeaBlock*);
-        *kid = _bb;
-        child_count += 1;
-    }
-    quick_sort(children, child_count, sizeof(SeaBlock*), cmp_block);
-
-    // use children here before ending scratch
-    for EachIndex(i, child_count) {
-        encode_block(e, fn, map, children[i], children, i);
+        encode_block(e, fn, map, _bb, patches, patchlen);
     }
 
-    scratch_end(scratch);
 }
 
 void sea_encode(SeaModule *m, SeaFunctionGraph *fn) {
@@ -96,8 +116,21 @@ void sea_encode(SeaModule *m, SeaFunctionGraph *fn) {
 
     Temp scratch = scratch_begin(0, 0);
     SeaPosMap map = sea_pos_map_init(scratch.arena, 401);
+    SeaPatch *patches = push_array(scratch.arena, SeaPatch, MAX_PATCHES);
+    U16 patchlen = 0;
 
-    encode_block(e, fn, &map, fn->domtree, 0, 0);
+    encode_block(e, fn, &map, fn->domtree, patches, &patchlen);
+
+    for EachIndex(i, patchlen) {
+        SeaPatch p = patches[i];
+        S64 desired_loc = sea_pos_map_lookup(&map, p.desired);
+        Assert(desired_loc != -1);
+        S64 patch_loc = p.loc;
+        S64 next_loc = patch_loc + 4;
+        S32 offset = desired_loc - next_loc;
+        emitter_write_s32(e, patch_loc, offset);
+    }
+
 
     scratch_end(scratch);
 
