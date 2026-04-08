@@ -29,6 +29,7 @@ enum {
     // Control Flow
     X64Node_Ret,
     X64Node_Jmp,
+    X64Node_Set,
     X64Node_CmpEqI,    // == immediate
     X64Node_CmpEq,     // ==
     X64Node_CmpNeqI,   // != immediate

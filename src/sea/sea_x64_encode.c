@@ -191,15 +191,13 @@ void x64_encode_syscall(SeaEmitter *e) {
     emitter_push_bytes(e, b, 2);
 }
 
-void x64_encode_near_jmp(SeaEmitter *e, S32 offset) {
-    // this may be causing issues bug we will see
-    if ((offset <= -128 && offset <= 0) || (offset < 128 && offset > 0)) {
-        emitter_push_byte(e, 0xEB);
-        emitter_push_byte(e, (U8)(offset & 0xFF));
-    } else {
-        emitter_push_byte(e, 0xE9);
-        emitter_push_s32(e, offset);
-    }
+
+
+S64 x64_encode_near_jmp(SeaEmitter *e) {
+    emitter_push_byte(e, 0xE9);
+    S64 end = e->len;
+    emitter_push_s32(e, 0);
+    return end;
 }
 
 S64 x64_encode_near_jz(SeaEmitter *e, X64Reg reg) {

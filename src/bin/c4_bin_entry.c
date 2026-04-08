@@ -37,7 +37,7 @@ internal void entry_point(CmdLine *cmd_line) {
 
     sea_codegen_module(&m.m);
 
-    S64 x = 67;
+    S64 x = 5;
     S64 result = sea_jit(&m.m, x);
     printf("Result from simp(%d) = %d\n", (int)x, (int)result);
 

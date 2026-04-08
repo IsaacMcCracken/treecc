@@ -155,6 +155,7 @@ SeaNode *x64_create_cmp_eq(SeaFunctionGraph *fn, SeaNode *in) {
 
 
 
+
 // Top-level selector: walks a generic IR node and emits x64 machine nodes
 SeaNode *x64_select(SeaFunctionGraph *fn, SeaNode *in) {
     switch (in->kind) {
@@ -247,9 +248,7 @@ RegMask x64_rmask_in(SeaNode *node, U16 idx) {
             break;
         }
 
-        case SeaNodeKind_Phi:
-            if (idx != 0) return X64_RMASK;
-            break;
+
         case SeaNodeKind_Copy:
         case X64Node_Jmp:
         case X64Node_CmpEqI:    // == immediate
@@ -283,6 +282,8 @@ RegMask x64_rmask_in(SeaNode *node, U16 idx) {
     }
     Trap();
 }
+
+
 
 SeaMach mach = (SeaMach){
     .name = (String8){"x64", 3},

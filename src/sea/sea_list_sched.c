@@ -260,6 +260,7 @@ void sched_bb(SeaFunctionGraph *fn, SeaBlock *bb, U16 *dep_data) {
 
     if (block_size == 0) return;
 
+
     Temp scratch = scratch_begin(0, 0);
     SeaNode **unsched = push_array(scratch.arena, SeaNode *, block_size);
     U16 unschedlen = 0;
@@ -291,6 +292,8 @@ void sched_bb(SeaFunctionGraph *fn, SeaBlock *bb, U16 *dep_data) {
             }
         }
     }
+
+    // B32 has_jmp = bb->begin->kind == SeaNodeKind_Proj && bb->begin->vint == 1;
 
     // Assert(unschedlen == 0);
 

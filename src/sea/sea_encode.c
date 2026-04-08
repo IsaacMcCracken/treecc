@@ -21,7 +21,7 @@ struct SeaPatch {
 };
 
 #define MAX_PATCHES 128
-
+S64 x64_encode_near_jmp(SeaEmitter *e);
 SeaPosMap sea_pos_map_init(Arena *arena, U64 cap) {
     return (SeaPosMap){
         .cells = push_array(arena, SeaPosCell*, cap),
@@ -100,6 +100,21 @@ void encode_block(
             *patchlen += 1;
             Assert(*patchlen <= MAX_PATCHES);
         }
+    }
+
+    if (bb->begin->kind == SeaNodeKind_Proj && bb->begin->vint == 1) {
+        SeaNode *desired = 0;
+        for EachNode(user_node, SeaUser, bb->begin->users) {
+            SeaNode *user = sea_user_val(user_node);
+            if (user->kind == SeaNodeKind_Region || user->kind == SeaNodeKind_Loop) {
+                desired = user;
+                break;
+            }
+        }
+        Assert(desired);
+        S64 loc = x64_encode_near_jmp(e);
+        patches[*patchlen] = (SeaPatch){.loc = loc, .desired = desired};
+        *patchlen += 1;
     }
 
     for EachNode(_bb, SeaBlock, bb->children.head) {

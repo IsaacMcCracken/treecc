@@ -3,7 +3,7 @@
 
 fn int simp(int x) {
     if (x == 5) {
-        x = x + 5
+        x = x + 37
     } else {
         x = x * 2
     }
